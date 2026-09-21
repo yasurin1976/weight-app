@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="体重管理">
+<title>体重管理</title>
+<meta name="theme-color" content="#2f6fd0">
+<meta name="description" content="食事・体組成・歩数・運動を記録して、摂取と消費のバランスを管理するアプリ">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ ヘッダー ============ -->
+<header class="app-header">
+  <h1 id="screen-title">ホーム</h1>
+</header>
+
+<!-- ============ 本体 ============ -->
+<main class="app-main">
+
+  <!-- ---------- ホーム画面 ---------- -->
+  <section class="screen" id="screen-home" data-title="ホーム">
+
+    <div class="banner banner-warn" id="backup-banner" hidden>
+      <span id="backup-banner-text"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-label">最新体重</div>
+      <div class="big-number"><span id="home-weight">--</span><span class="unit">kg</span></div>
+      <div class="meta-line" id="home-weight-at"></div>
+      <div class="sub-row">
+        <div class="sub-item"><span class="sub-label">目標との差</span><span class="sub-value" id="home-weight-diff">--</span></div>
+        <div class="sub-item"><span class="sub-label" id="home-avg7-label">7日平均</span><span class="sub-value" id="home-weight-avg7">--</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">最新体脂肪率</div>
+      <div class="big-number"><span id="home-bodyfat">--</span><span class="unit">%</span></div>
+      <div class="meta-line" id="home-bodyfat-at"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">今日のカロリー収支<span class="est-tag">推定</span></div>
+      <div class="kv-grid">
+        <div class="kv"><span class="kv-key">摂取（IN）</span><span class="kv-val" id="home-in">--</span></div>
+        <div class="kv"><span class="kv-key">消費（OUT）</span><span class="kv-val" id="home-out">--</span></div>
+        <div class="kv kv-strong"><span class="kv-key">収支</span><span class="kv-val" id="home-balance">--</span></div>
+        <div class="kv"><span class="kv-key">タンパク質</span><span class="kv-val" id="home-protein">--</span></div>
+      </div>
+
+      <button type="button" class="link-btn" id="btn-out-detail">消費の内訳を見る</button>
+
+      <div class="breakdown" id="home-out-breakdown" hidden>
+        <div class="kv"><span class="kv-key">基礎代謝</span><span class="kv-val" id="bd-bmr">--</span></div>
+        <div class="kv"><span class="kv-key">日常活動</span><span class="kv-val" id="bd-daily">--</span></div>
+        <div class="kv"><span class="kv-key">歩行</span><span class="kv-val" id="bd-walk">--</span></div>
+        <div class="kv"><span class="kv-key">筋トレ</span><span class="kv-val" id="bd-strength">--</span></div>
+        <div class="kv"><span class="kv-key">有酸素</span><span class="kv-val" id="bd-cardio">--</span></div>
+        <div class="kv"><span class="kv-key">食事による熱産生</span><span class="kv-val" id="bd-tef">--</span></div>
+        <p class="note" id="bd-note"></p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">今日の活動</div>
+      <div class="kv-grid">
+        <div class="kv"><span class="kv-key">歩数</span><span class="kv-val" id="home-steps">--</span></div>
+        <div class="kv"><span class="kv-key">筋トレ</span><span class="kv-val" id="home-strength">--</span></div>
+        <div class="kv"><span class="kv-key">有酸素</span><span class="kv-val" id="home-cardio">--</span></div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="quick-btn" type="button" id="btn-quick-meal">食事を記録</button>
+      <button class="quick-btn" type="button" id="btn-quick-body">体重を記録</button>
+      <button class="quick-btn" type="button" id="btn-quick-workout">運動を記録</button>
+      <button class="quick-btn" type="button" id="btn-quick-steps">歩数を記録</button>
+    </div>
+
+  </section>
+
+  <!-- ---------- 記録メニュー ---------- -->
+  <section class="screen" id="screen-record" data-title="記録" hidden>
+    <div class="menu-list">
+      <button class="menu-item" type="button" id="btn-menu-body">
+        <span class="menu-title">体組成を記録</span>
+        <span class="menu-desc">体重・体脂肪率など</span>
+      </button>
+      <button class="menu-item" type="button" id="btn-menu-meal">
+        <span class="menu-title">食事を記録</span>
+        <span class="menu-desc">料理ごとにカロリーとPFC</span>
+      </button>
+      <button class="menu-item" type="button" id="btn-menu-myfoods">
+        <span class="menu-title">マイ食品リスト</span>
+        <span class="menu-desc">よく食べるものを登録して呼び出す</span>
+      </button>
+      <button class="menu-item" type="button" id="btn-menu-steps">
+        <span class="menu-title">歩数を記録</span>
+        <span class="menu-desc">1日1件。距離と消費は自動計算</span>
+      </button>
+      <button class="menu-item" type="button" id="btn-menu-strength">
+        <span class="menu-title">筋トレを記録</span>
+        <span class="menu-desc">種目・重量・セット回数・運動時間</span>
+      </button>
+      <button class="menu-item" type="button" id="btn-menu-cardio">
+        <span class="menu-title">有酸素を記録</span>
+        <span class="menu-desc">トレッドミル・水中ウォーキングなど</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ---------- 体組成の記録／編集 ---------- -->
+  <section class="screen" id="screen-body" data-title="体組成を記録" hidden>
+
+    <form id="body-form" novalidate>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="b-date">測定日 <span class="req">必須</span></label>
+          <input type="date" id="b-date">
+        </div>
+        <div class="field">
+          <label for="b-time">測定時刻 <span class="req">必須</span></label>
+          <input type="time" id="b-time">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="b-weight">体重（kg） <span class="req">必須</span></label>
+        <input type="number" id="b-weight" inputmode="decimal" step="0.1" min="30" max="200">
+      </div>
+
+      <h2 class="section-head">任意項目（体組成計に出ている値だけ入力）</h2>
+
+      <div class="field">
+        <label for="b-bodyfat">体脂肪率（%）</label>
+        <input type="number" id="b-bodyfat" inputmode="decimal" step="0.1" min="3" max="60">
+      </div>
+
+      <div class="field">
+        <label for="b-fatmass">体脂肪量（kg）</label>
+        <input type="number" id="b-fatmass" inputmode="decimal" step="0.1" min="0" max="100">
+      </div>
+
+      <div class="field">
+        <label for="b-visceral">内臓脂肪レベル</label>
+        <input type="number" id="b-visceral" inputmode="decimal" step="0.5" min="0.5" max="30">
+      </div>
+
+      <div class="field">
+        <label for="b-smpct">骨格筋率（%）</label>
+        <input type="number" id="b-smpct" inputmode="decimal" step="0.1" min="5" max="60">
+      </div>
+
+      <div class="field">
+        <label for="b-smkg">骨格筋量（kg）</label>
+        <input type="number" id="b-smkg" inputmode="decimal" step="0.1" min="0" max="100">
+      </div>
+
+      <div class="field">
+        <label for="b-bmr">基礎代謝（kcal）</label>
+        <input type="number" id="b-bmr" inputmode="numeric" step="1" min="500" max="3000">
+      </div>
+
+      <div class="field">
+        <label for="b-bmi">BMI</label>
+        <input type="number" id="b-bmi" inputmode="decimal" step="0.1" min="10" max="50">
+      </div>
+
+      <div class="field">
+        <label for="b-memo">メモ</label>
+        <input type="text" id="b-memo" maxlength="100">
+      </div>
+
+      <div id="body-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-body-save">保存する</button>
+      <button type="button" class="btn" id="btn-body-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-body-delete" hidden>この記録を削除</button>
+
+      <p class="note">家庭用の体組成計は水分量などで変動します。単日の上下ではなく7日平均で判断してください。</p>
+
+    </form>
+
+  </section>
+
+  <!-- ---------- 食事の記録／編集 ---------- -->
+  <section class="screen" id="screen-meal" data-title="食事を記録" hidden>
+
+    <form id="meal-form" novalidate>
+
+      <div class="field">
+        <label for="m-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="m-date">
+      </div>
+
+      <div class="field">
+        <label>区分 <span class="req">必須</span></label>
+        <div class="seg" id="m-type-group">
+          <button type="button" class="seg-btn" data-type="breakfast">朝食</button>
+          <button type="button" class="seg-btn" data-type="lunch">昼食</button>
+          <button type="button" class="seg-btn" data-type="dinner">夕食</button>
+          <button type="button" class="seg-btn" data-type="snack">間食</button>
+        </div>
+      </div>
+
+      <button type="button" class="btn" id="btn-pick-myfood">マイ食品から選ぶ</button>
+
+      <div class="picker" id="myfood-picker" hidden>
+        <div id="myfood-picker-list"></div>
+        <p class="note" id="myfood-picker-empty" hidden>マイ食品がまだ登録されていません。</p>
+      </div>
+
+      <div class="field" style="margin-top:16px">
+        <label for="m-name">料理名 <span class="req">必須</span></label>
+        <input type="text" id="m-name" maxlength="60">
+      </div>
+
+      <div class="field">
+        <label for="m-kcal">カロリー（kcal） <span class="req">必須</span></label>
+        <input type="number" id="m-kcal" inputmode="numeric" step="1" min="0" max="5000">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="m-protein">P（g）</label>
+          <input type="number" id="m-protein" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+        <div class="field">
+          <label for="m-fat">F（g）</label>
+          <input type="number" id="m-fat" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+        <div class="field">
+          <label for="m-carb">C（g）</label>
+          <input type="number" id="m-carb" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="m-memo">メモ</label>
+        <input type="text" id="m-memo" maxlength="100">
+      </div>
+
+      <label class="check-row">
+        <input type="checkbox" id="m-save-myfood">
+        <span>この内容をマイ食品にも登録する</span>
+      </label>
+
+      <div id="meal-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-meal-save">保存する</button>
+      <button type="button" class="btn" id="btn-meal-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-meal-delete" hidden>この記録を削除</button>
+
+      <p class="note">写真からの自動解析は Phase 2 で追加します。Phase 1 は手入力です。</p>
+
+    </form>
+
+  </section>
+
+  <!-- ---------- マイ食品リスト ---------- -->
+  <section class="screen" id="screen-myfoods" data-title="マイ食品リスト" hidden>
+
+    <button type="button" class="btn btn-primary" id="btn-myfood-new">新しい食品を登録</button>
+
+    <form id="myfood-form" novalidate hidden>
+      <h2 class="section-head" id="myfood-form-title">新しい食品</h2>
+
+      <div class="field">
+        <label for="mf-name">食品名 <span class="req">必須</span></label>
+        <input type="text" id="mf-name" maxlength="60">
+      </div>
+
+      <div class="field">
+        <label for="mf-unit">基準量</label>
+        <input type="text" id="mf-unit" maxlength="30" placeholder="例：1個、100g、1杯">
+      </div>
+
+      <div class="field">
+        <label for="mf-kcal">カロリー（kcal） <span class="req">必須</span></label>
+        <input type="number" id="mf-kcal" inputmode="numeric" step="1" min="0" max="5000">
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="mf-protein">P（g）</label>
+          <input type="number" id="mf-protein" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+        <div class="field">
+          <label for="mf-fat">F（g）</label>
+          <input type="number" id="mf-fat" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+        <div class="field">
+          <label for="mf-carb">C（g）</label>
+          <input type="number" id="mf-carb" inputmode="decimal" step="0.1" min="0" max="500">
+        </div>
+      </div>
+
+      <div id="myfood-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary">保存する</button>
+      <button type="button" class="btn" id="btn-myfood-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-myfood-delete" hidden>この食品を削除</button>
+    </form>
+
+    <div id="myfood-list"></div>
+    <p class="note" id="myfood-empty" hidden>まだ登録がありません。よく食べるものを登録しておくと、食事記録が数タップで済みます。</p>
+
+  </section>
+
+  <!-- ---------- 歩数の記録 ---------- -->
+  <section class="screen" id="screen-steps" data-title="歩数を記録" hidden>
+
+    <form id="steps-form" novalidate>
+
+      <div class="field">
+        <label for="s-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="s-date">
+        <p class="field-help" id="s-existing" hidden></p>
+      </div>
+
+      <div class="field">
+        <label for="s-steps">歩数 <span class="req">必須</span></label>
+        <input type="number" id="s-steps" inputmode="numeric" step="1" min="0" max="100000">
+      </div>
+
+      <div class="card">
+        <div class="kv"><span class="kv-key">推定距離</span><span class="kv-val" id="s-distance">--</span></div>
+        <div class="kv"><span class="kv-key">推定消費<span class="est-tag">推定</span></span><span class="kv-val" id="s-kcal">--</span></div>
+      </div>
+
+      <div class="banner banner-warn">
+        ジムのトレッドミルや水中ウォーキングの歩数は<strong>ここに含めないでください</strong>。有酸素として別に記録します（二重計上を防ぐため）。
+      </div>
+
+      <div id="steps-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-steps-save">保存する</button>
+      <button type="button" class="btn" id="btn-steps-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-steps-delete" hidden>この日の歩数を削除</button>
+
+      <p class="note">歩数からの消費カロリーは目安です。歩く速さや路面で実際は変わります。</p>
+
+    </form>
+
+  </section>
+
+  <!-- ---------- 筋トレの記録 ---------- -->
+  <section class="screen" id="screen-strength" data-title="筋トレを記録" hidden>
+
+    <form id="strength-form" novalidate>
+
+      <div class="field">
+        <label for="w-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="w-date">
+      </div>
+
+      <div class="field">
+        <label for="w-exercise">種目名 <span class="req">必須</span></label>
+        <input type="text" id="w-exercise" maxlength="40" list="exercise-list" placeholder="例：ラットプルダウン">
+        <datalist id="exercise-list"></datalist>
+      </div>
+
+      <div class="past" id="w-past" hidden>
+        <div class="past-title">この種目の直近の記録</div>
+        <div id="w-past-list"></div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="w-weight">重量</label>
+          <input type="number" id="w-weight" inputmode="decimal" step="0.5" min="0" max="1000">
+        </div>
+        <div class="field">
+          <label>単位</label>
+          <div class="seg seg-2" id="w-unit-group">
+            <button type="button" class="seg-btn" data-unit="kg">kg</button>
+            <button type="button" class="seg-btn" data-unit="LBS">LBS</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="w-reps">各セットの回数 <span class="req">必須</span></label>
+        <input type="text" id="w-reps" inputmode="numeric" placeholder="例：10+10+8">
+        <p class="field-help" id="w-reps-note">「+」か「,」で区切って入力してください。合計回数は自動計算します。</p>
+      </div>
+
+      <div class="field">
+        <label for="w-duration">運動時間（分） <span class="req">必須</span></label>
+        <input type="number" id="w-duration" inputmode="numeric" step="1" min="1" max="300">
+        <p class="field-help">消費カロリーの推定に使います。その種目にかけたおよその時間で構いません。</p>
+      </div>
+
+      <div class="field">
+        <label for="w-memo">メモ</label>
+        <input type="text" id="w-memo" maxlength="100">
+      </div>
+
+      <div id="strength-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-strength-save">保存する</button>
+      <button type="button" class="btn" id="btn-strength-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-strength-delete" hidden>この記録を削除</button>
+
+      <p class="note">回数は疲労・種目の順番・休憩時間でも変わります。単日の増減で筋力が落ちたと判断しないでください。マシンが違えば重量も単純比較できません。</p>
+
+    </form>
+
+  </section>
+
+  <!-- ---------- 有酸素の記録 ---------- -->
+  <section class="screen" id="screen-cardio" data-title="有酸素を記録" hidden>
+
+    <form id="cardio-form" novalidate>
+
+      <div class="field">
+        <label for="c-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="c-date">
+      </div>
+
+      <div class="field">
+        <label>種目 <span class="req">必須</span></label>
+        <div class="chip-row" id="c-type-group">
+          <button type="button" class="chip" data-ex="トレッドミル">トレッドミル</button>
+          <button type="button" class="chip" data-ex="ステッパー">ステッパー</button>
+          <button type="button" class="chip" data-ex="クライマー">クライマー</button>
+          <button type="button" class="chip" data-ex="水中ウォーキング">水中ウォーキング</button>
+          <button type="button" class="chip" data-ex="その他">その他</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="c-exercise">種目名</label>
+        <input type="text" id="c-exercise" maxlength="40">
+      </div>
+
+      <div class="field">
+        <label for="c-duration">運動時間（分） <span class="req">必須</span></label>
+        <input type="number" id="c-duration" inputmode="numeric" step="1" min="1" max="300">
+      </div>
+
+      <div class="field">
+        <label for="c-distance">距離（km）</label>
+        <input type="number" id="c-distance" inputmode="decimal" step="0.01" min="0" max="100">
+      </div>
+
+      <h2 class="section-head">マシン表示の消費カロリー</h2>
+
+      <div class="field">
+        <label for="c-machine-kcal">マシン表示（kcal）</label>
+        <input type="number" id="c-machine-kcal" inputmode="numeric" step="1" min="0" max="3000">
+        <p class="field-help">マシンに出ている数字をそのまま入力してください。加工せず原値のまま保存します。</p>
+      </div>
+
+      <div class="field">
+        <label>マシン表示の種類</label>
+        <div class="seg seg-3" id="c-kcaltype-group">
+          <button type="button" class="seg-btn" data-kt="unknown">不明</button>
+          <button type="button" class="seg-btn" data-kt="net">運動分のみ</button>
+          <button type="button" class="seg-btn" data-kt="gross">安静分込み</button>
+        </div>
+        <p class="field-help">分からなければ「不明」のままで構いません。「安静分込み」を選んだときだけ、その時間ぶんの基礎代謝を差し引きます。</p>
+      </div>
+
+      <div class="field">
+        <label for="c-mets">強度（METs）</label>
+        <input type="number" id="c-mets" inputmode="decimal" step="0.1" min="1" max="20">
+        <p class="field-help">マシン表示がないとき（水中ウォーキングなど）の推定に使います。種目を選ぶと目安が入ります。</p>
+      </div>
+
+      <div class="card">
+        <div class="kv"><span class="kv-key">推定消費<span class="est-tag">推定</span></span><span class="kv-val" id="c-preview">--</span></div>
+        <p class="field-help" id="c-preview-note"></p>
+      </div>
+
+      <h2 class="section-head">任意項目（マシンに出ている値だけ）</h2>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="c-hr">平均心拍</label>
+          <input type="number" id="c-hr" inputmode="numeric" step="1" min="30" max="230">
+        </div>
+        <div class="field">
+          <label for="c-speed">平均速度</label>
+          <input type="number" id="c-speed" inputmode="decimal" step="0.1" min="0" max="40">
+        </div>
+        <div class="field">
+          <label for="c-incline">傾斜</label>
+          <input type="number" id="c-incline" inputmode="decimal" step="0.1" min="0" max="30">
+        </div>
+      </div>
+
+      <div class="field-row" id="c-water-row" hidden>
+        <div class="field">
+          <label for="c-depth">水深（cm）</label>
+          <input type="number" id="c-depth" inputmode="numeric" step="1" min="30" max="200">
+        </div>
+        <div class="field">
+          <label for="c-intensity">強度の感覚</label>
+          <input type="text" id="c-intensity" maxlength="20" placeholder="例：ゆっくり">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="c-memo">メモ</label>
+        <input type="text" id="c-memo" maxlength="100">
+      </div>
+
+      <div id="cardio-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary" id="btn-cardio-save">保存する</button>
+      <button type="button" class="btn" id="btn-cardio-cancel">キャンセル</button>
+      <button type="button" class="btn btn-danger" id="btn-cardio-delete" hidden>この記録を削除</button>
+
+      <p class="note">トレッドミルなどの歩数は歩数欄に入れないでください（二重計上になります）。</p>
+
+    </form>
+
+  </section>
+
+  <!-- ---------- 履歴 ---------- -->
+  <section class="screen" id="screen-history" data-title="履歴" hidden>
+    <div id="history-empty" class="placeholder" hidden>
+      <p class="placeholder-title">まだ記録がありません</p>
+      <button type="button" class="btn btn-primary" id="btn-history-add">体組成を記録する</button>
+    </div>
+    <div id="history-list"></div>
+    <button type="button" class="btn" id="btn-history-more" hidden>さらに表示</button>
+  </section>
+
+  <!-- ---------- グラフ ---------- -->
+  <section class="screen" id="screen-chart" data-title="グラフ" hidden>
+
+    <div class="seg seg-3" id="range-group">
+      <button type="button" class="seg-btn" data-range="30">30日</button>
+      <button type="button" class="seg-btn" data-range="90">90日</button>
+      <button type="button" class="seg-btn" data-range="0">全期間</button>
+    </div>
+
+    <div id="chart-empty" class="placeholder" hidden>
+      <p class="placeholder-title">まだ記録がありません</p>
+      <p class="note">体組成を記録すると推移が表示されます。</p>
+    </div>
+
+    <div id="chart-area">
+
+      <div class="card chart-card">
+        <div class="card-label">体重の推移</div>
+        <div class="legend" id="weight-legend">
+          <span class="legend-item"><i class="swatch" style="background:var(--series-1)"></i>実測（代表体重）</span>
+          <span class="legend-item"><i class="swatch" style="background:var(--series-2)"></i>7日平均</span>
+        </div>
+        <div class="chart-box"><canvas id="chart-weight"></canvas></div>
+        <p class="note" id="weight-chart-note"></p>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-label">体脂肪率の推移</div>
+        <div class="chart-box"><canvas id="chart-bodyfat"></canvas></div>
+        <p class="note" id="bodyfat-chart-note" hidden>体脂肪率の記録がまだありません。</p>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-label">骨格筋量の推移</div>
+        <div class="chart-box"><canvas id="chart-muscle"></canvas></div>
+        <p class="note" id="muscle-chart-note" hidden>骨格筋量の記録がまだありません。</p>
+      </div>
+
+      <button type="button" class="btn" id="btn-chart-table">数値で見る</button>
+
+      <div class="card" id="chart-table-card" hidden>
+        <div class="table-wrap">
+          <table class="data-table" id="chart-table"></table>
+        </div>
+      </div>
+
+      <p class="note">家庭用の体組成計は水分量などで変動します。単日の上下ではなく、7日平均の向きで判断してください。</p>
+
+    </div>
+
+  </section>
+
+  <!-- ---------- 設定画面 ---------- -->
+  <section class="screen" id="screen-settings" data-title="設定" hidden>
+
+    <form id="settings-form" novalidate>
+
+      <h2 class="section-head">プロフィール</h2>
+
+      <div class="field">
+        <label for="f-birthdate">生年月日</label>
+        <input type="date" id="f-birthdate" inputmode="numeric">
+        <p class="field-help">初回に入力してください。年齢は生年月日から自動計算します（現在の年齢：<span id="age-display">--</span>歳）。</p>
+      </div>
+
+      <div class="field">
+        <label for="f-height">身長（cm）</label>
+        <input type="number" id="f-height" inputmode="decimal" step="0.1" min="100" max="250">
+      </div>
+
+      <div class="field">
+        <label for="f-stride">歩幅（cm）</label>
+        <input type="number" id="f-stride" inputmode="decimal" step="1" min="30" max="120">
+        <p class="field-help">歩数から歩行距離と消費カロリーを推定するために使います。目安は身長×0.45。</p>
+      </div>
+
+      <h2 class="section-head">消費カロリーの推定設定</h2>
+
+      <div class="field">
+        <label for="f-beta">日常活動補正 β</label>
+        <input type="number" id="f-beta" inputmode="decimal" step="0.01" min="0" max="0.5">
+        <p class="field-help">歩数に現れない日常活動（家事・立ち仕事など）を、基礎代謝の何倍として上乗せするかの値です。初期値 0.10。</p>
+      </div>
+
+      <div class="field">
+        <label for="f-mets">筋トレの強度（METs）</label>
+        <input type="number" id="f-mets" inputmode="decimal" step="0.1" min="1" max="12">
+        <p class="field-help">運動の強さを表す数値です。初期値 5.0。値が大きいほど消費カロリーの推定が増えます。</p>
+      </div>
+
+      <div class="field">
+        <label for="f-tef">食事誘発性熱産生 TEF（%）</label>
+        <input type="number" id="f-tef" inputmode="decimal" step="1" min="0" max="30">
+        <p class="field-help">食事の消化に使われるカロリーの割合です。摂取カロリーに対する%。初期値 10%。</p>
+      </div>
+
+      <h2 class="section-head">目標</h2>
+
+      <div class="field">
+        <label for="f-target-weight">目標体重（kg）</label>
+        <input type="number" id="f-target-weight" inputmode="decimal" step="0.1" min="30" max="200">
+      </div>
+
+      <div class="field">
+        <label for="f-target-bodyfat">目標体脂肪率（%）</label>
+        <input type="number" id="f-target-bodyfat" inputmode="decimal" step="0.1" min="3" max="60">
+      </div>
+
+      <div class="field">
+        <label for="f-target-pace">目標ペース（kg／週）</label>
+        <input type="number" id="f-target-pace" inputmode="decimal" step="0.05" min="0" max="2">
+        <p class="field-help">1週間あたりの減量ペースの目安です。初期値 0.4kg／週。</p>
+      </div>
+
+      <h2 class="section-head">平均の設定</h2>
+
+      <div class="field">
+        <label for="f-min-samples">7日平均に必要な測定日数</label>
+        <input type="number" id="f-min-samples" inputmode="numeric" step="1" min="1" max="7">
+        <p class="field-help">直近7日のうち何日測れば正式な7日平均として表示するかの設定です。初期値 5日。これを下回る間は「データ蓄積中」と表示します。</p>
+      </div>
+
+      <div id="settings-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary">設定を保存</button>
+      <p id="settings-saved" class="save-msg" hidden>保存しました。</p>
+
+    </form>
+
+    <h2 class="section-head">バックアップ</h2>
+
+    <div class="card">
+      <div class="kv"><span class="kv-key">最終バックアップ</span><span class="kv-val" id="last-backup">未実施</span></div>
+      <p class="field-help" id="backup-advice"></p>
+    </div>
+
+    <button type="button" class="btn" id="btn-export">JSONバックアップを書き出す</button>
+
+    <div class="field" style="margin-top:16px">
+      <label for="f-import">JSONバックアップから復元</label>
+      <input type="file" id="f-import" accept="application/json,.json">
+      <p class="field-help">復元すると現在のデータはすべて上書きされます。</p>
+    </div>
+    <p id="import-msg" class="save-msg" hidden></p>
+
+    <h2 class="section-head">CSVで書き出す</h2>
+
+    <div class="menu-list" id="csv-list">
+      <button class="menu-item" type="button" data-csv="daily">
+        <span class="menu-title">日次サマリー</span>
+        <span class="menu-desc">日ごとの摂取・消費・収支（そのつど計算し直した値）</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="body">
+        <span class="menu-title">体組成</span>
+        <span class="menu-desc">全測定。代表体重の印つき</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="meals">
+        <span class="menu-title">食事</span>
+        <span class="menu-desc">料理ごとのカロリーとPFC</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="myFoods">
+        <span class="menu-title">マイ食品</span>
+        <span class="menu-desc">登録した食品の一覧</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="steps">
+        <span class="menu-title">歩数</span>
+        <span class="menu-desc">歩数・推定距離・推定消費</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="strength">
+        <span class="menu-title">筋トレ</span>
+        <span class="menu-desc">種目・重量・セット別回数（元の単位のまま）</span>
+      </button>
+      <button class="menu-item" type="button" data-csv="cardio">
+        <span class="menu-title">有酸素</span>
+        <span class="menu-desc">マシン表示は原値のまま</span>
+      </button>
+    </div>
+    <p id="csv-msg" class="save-msg" hidden></p>
+    <p class="note">Excel や Numbers で開けます。文字化けしないよう UTF-8（BOM付き）で書き出します。</p>
+
+    <h2 class="section-head">このアプリについて</h2>
+    <div class="card">
+      <div class="kv"><span class="kv-key">アプリ版数</span><span class="kv-val" id="app-version">--</span></div>
+      <div class="kv"><span class="kv-key">計算式バージョン</span><span class="kv-val" id="calc-version">--</span></div>
+      <div class="kv"><span class="kv-key">データ形式</span><span class="kv-val" id="schema-version">--</span></div>
+    </div>
+    <p class="note">消費カロリーはすべて推定値です。単日の数値ではなく7日平均で判断してください。</p>
+    <p class="note">アプリを更新したのに表示が変わらないときは、一度アプリを閉じてから開き直してください。</p>
+
+  </section>
+
+</main>
+
+<!-- ============ 下部ナビ ============ -->
+<nav class="app-nav">
+  <button class="nav-btn is-active" type="button" data-target="home">
+    <span class="nav-icon">■</span><span class="nav-label">ホーム</span>
+  </button>
+  <button class="nav-btn" type="button" data-target="record">
+    <span class="nav-icon">＋</span><span class="nav-label">記録</span>
+  </button>
+  <button class="nav-btn" type="button" data-target="history">
+    <span class="nav-icon">≡</span><span class="nav-label">履歴</span>
+  </button>
+  <button class="nav-btn" type="button" data-target="chart">
+    <span class="nav-icon">◹</span><span class="nav-label">グラフ</span>
+  </button>
+  <button class="nav-btn" type="button" data-target="settings">
+    <span class="nav-icon">⚙</span><span class="nav-label">設定</span>
+  </button>
+</nav>
+
+<script src="js/lib/chart.umd.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/csv.js"></script>
+<script src="js/views/settings.js"></script>
+<script src="js/views/body.js"></script>
+<script src="js/views/meal.js"></script>
+<script src="js/views/myfoods.js"></script>
+<script src="js/views/steps.js"></script>
+<script src="js/views/strength.js"></script>
+<script src="js/views/cardio.js"></script>
+<script src="js/views/chart.js"></script>
+<script src="js/views/history.js"></script>
+<script src="js/views/home.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+/* サービスワーカーの登録（オフラインでも起動できるようにする）。
+   file:// で直接開いたときは登録できないので、その場合は何もしません。 */
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function (e) {
+      console.warn('オフライン用の登録ができませんでした:', e);
+    });
+  });
+}
+</script>
+</body>
+</html>
