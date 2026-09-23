@@ -842,3 +842,24 @@ input.is-ai{
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+
+/* 個数の入力（2.1.2） */
+.qty-row{
+  display: grid;
+  grid-template-columns: 56px 1fr 56px;
+  gap: 8px;
+  align-items: stretch;
+}
+.qty-row input{ text-align: center; }
+.qty-btn{
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+.qty-btn:active{ background: var(--accent-soft); }
+.qty-total{ color: var(--text); font-weight: 700; }

@@ -26,6 +26,68 @@ App.Strength = (function () {
   /* ---------- 回数の読み取り ---------- */
 
   /* 「10+10+8」「10,10,8」「10 10 8」 → [10,10,8] */
+  /* セットごとに回数が違うときだけ自由入力に切り替える。
+     既定は「セット数」「1セットの回数」の2欄。 */
+  var varyMode = false;
+
+  function setVaryMode(on) {
+    varyMode = !!on;
+    var simple = $('w-simple-box');
+    var vary   = $('w-vary-box');
+    if (simple) { simple.hidden = varyMode; }
+    if (vary)   { vary.hidden = !varyMode; }
+    previewReps();
+  }
+
+  /* いま画面に入っている内容から、セットごとの回数の配列を作る */
+  function currentReps() {
+    if (varyMode) {
+      var raw = ($('w-reps') && $('w-reps').value) ? $('w-reps').value.trim() : '';
+      return parseReps(raw);
+    }
+    var sets = Number(($('w-sets') && $('w-sets').value) ? $('w-sets').value.trim() : '');
+    var rep  = Number(($('w-rep')  && $('w-rep').value)  ? $('w-rep').value.trim()  : '');
+    if (!isFinite(sets) || !isFinite(rep)) { return []; }
+    if (!C.isInteger(sets) || !C.isInteger(rep)) { return []; }
+    if (sets < 1 || sets > 20 || rep < 1 || rep > 200) { return []; }
+    var out = [];
+    var i;
+    for (i = 0; i < sets; i++) { out.push(rep); }
+    return out;
+  }
+
+  /* 合計回数と、推定される所要時間をその場で見せる */
+  function previewReps() {
+    var note = $('w-reps-note');
+    if (!note) { return; }
+    var r = currentReps();
+    if (!r.length) { note.textContent = ''; return; }
+    var total = r.reduce(function (a, b) { return a + b; }, 0);
+    var min = C.strengthMinutesFromReps(r);
+    note.textContent = r.length + 'セット　合計' + total + '回'
+                     + (min !== null ? '　（およそ' + min + '分として消費を推定します）' : '');
+  }
+
+  /* 記録を画面に戻す。
+     全セット同じ回数なら2欄の形に、違うなら自由入力の形にする。 */
+  function loadReps(reps) {
+    if ($('w-reps')) { $('w-reps').value = ''; }
+    if ($('w-sets')) { $('w-sets').value = '3'; }
+    if ($('w-rep'))  { $('w-rep').value  = ''; }
+
+    if (!(reps instanceof Array) || !reps.length) { setVaryMode(false); return; }
+
+    var same = reps.every(function (n) { return n === reps[0]; });
+    if (same) {
+      if ($('w-sets')) { $('w-sets').value = String(reps.length); }
+      if ($('w-rep'))  { $('w-rep').value  = String(reps[0]); }
+      setVaryMode(false);
+    } else {
+      if ($('w-reps')) { $('w-reps').value = repsText(reps); }
+      setVaryMode(true);
+    }
+  }
+
   function parseReps(text) {
     if (!text) { return []; }
     return String(text)
@@ -77,16 +139,14 @@ App.Strength = (function () {
       if ($('w-exercise')) { $('w-exercise').value = (e && e.exercise) || ''; }
       if ($('w-weight'))   { $('w-weight').value = (e && typeof e.weight === 'number') ? String(e.weight) : ''; }
       setUnit(e && e.unit);
-      if ($('w-reps'))     { $('w-reps').value = e ? repsText(e.reps) : ''; }
-      if ($('w-duration')) { $('w-duration').value = (e && typeof e.durationMin === 'number') ? String(e.durationMin) : ''; }
+      loadReps(e && e.reps);
       if ($('w-memo'))     { $('w-memo').value = (e && e.memo) || ''; }
     } else {
       if ($('w-date'))     { $('w-date').value = C.todayStr(); }
       if ($('w-exercise')) { $('w-exercise').value = ''; }
       if ($('w-weight'))   { $('w-weight').value = ''; }
       setUnit('kg');
-      if ($('w-reps'))     { $('w-reps').value = ''; }
-      if ($('w-duration')) { $('w-duration').value = ''; }
+      loadReps(null);
       if ($('w-memo'))     { $('w-memo').value = ''; }
     }
 
@@ -186,26 +246,22 @@ App.Strength = (function () {
       else { out.weight = C.snapToStep(w, 0.5); out.unit = unit; }
     }
 
-    var repsRaw = ($('w-reps') && $('w-reps').value) ? $('w-reps').value.trim() : '';
-    var reps = parseReps(repsRaw);
+    var reps = currentReps();
     if (!reps.length) {
-      errors.push('各セットの回数を入力してください（例：10+10+8）。');
+      errors.push(varyMode
+        ? '各セットの回数を入力してください（例：10+10+8）。'
+        : 'セット数と1セットの回数を入力してください。');
     } else {
       out.reps      = reps;
       out.setCount  = reps.length;
       out.totalReps = reps.reduce(function (a, b) { return a + b; }, 0);
-      out.rawText   = repsRaw.slice(0, 100);
-    }
+      out.rawText   = repsText(reps).slice(0, 100);
 
-    var dRaw = ($('w-duration') && $('w-duration').value) ? $('w-duration').value.trim() : '';
-    if (dRaw === '') {
-      errors.push('運動時間を入力してください。');
-    } else {
-      var d = Number(dRaw);
-      if (!isFinite(d))                 { errors.push('運動時間には数字を入力してください。'); }
-      else if (!C.isInteger(d))         { errors.push('運動時間は1分単位で入力してください。'); }
-      else if (d < 1 || d > 300)        { errors.push('運動時間は1〜300分の範囲で入力してください。'); }
-      else { out.durationMin = Math.round(d); }
+      /* 所要時間は手入力させず、セット数と回数から推定する。
+         消費カロリーの推定にしか使わないので、この粗さで足りる。 */
+      out.durationMin        = C.strengthMinutesFromReps(reps);
+      out.durationEstimated  = true;
+      out.calculationVersion = C.VERSION;
     }
 
     out.memo = ($('w-memo') && $('w-memo').value) ? $('w-memo').value.trim().slice(0, 100) : '';
@@ -284,15 +340,30 @@ App.Strength = (function () {
       ex.addEventListener('change', renderPast);
     }
 
-    var reps = $('w-reps');
-    if (reps) {
-      reps.addEventListener('input', function () {
-        var r = parseReps(reps.value);
-        var note = $('w-reps-note');
-        if (!note) { return; }
-        note.textContent = r.length
-          ? (r.length + 'セット　合計' + r.reduce(function (a, b) { return a + b; }, 0) + '回')
-          : '「+」か「,」で区切って入力してください。合計回数は自動計算します。';
+    ['w-reps', 'w-sets', 'w-rep'].forEach(function (id) {
+      var el = $(id);
+      if (el) { el.addEventListener('input', previewReps); }
+    });
+
+    var toVary = $('btn-reps-vary');
+    if (toVary) {
+      toVary.addEventListener('click', function () {
+        /* いま入っている内容を引き継いでから切り替える */
+        var r = currentReps();
+        if (r.length && $('w-reps')) { $('w-reps').value = repsText(r); }
+        setVaryMode(true);
+      });
+    }
+
+    var toSimple = $('btn-reps-simple');
+    if (toSimple) {
+      toSimple.addEventListener('click', function () {
+        var r = currentReps();
+        if (r.length) {
+          if ($('w-sets')) { $('w-sets').value = String(r.length); }
+          if ($('w-rep'))  { $('w-rep').value  = String(r[0]); }
+        }
+        setVaryMode(false);
       });
     }
 

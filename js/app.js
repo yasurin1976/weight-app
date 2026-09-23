@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.1.0 (スクショ読み取り)';
+App.VERSION = '2.2.0 (筋トレ入力を修正)';
 
 (function () {
   'use strict';

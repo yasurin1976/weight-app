@@ -23,6 +23,9 @@ App.Meal = (function () {
   var editingId = null;
   var mealType  = 'breakfast';
 
+  var TYPE_LABELS = { breakfast: '朝食', lunch: '昼食', dinner: '夕食', snack: '間食' };
+  function labelOfType(t) { return TYPE_LABELS[t] || '食事'; }
+
   function $(id) { return document.getElementById(id); }
 
   /* ---------- 時間帯から区分を推測する ---------- */
@@ -80,19 +83,30 @@ App.Meal = (function () {
     if ($('m-name')) { $('m-name').value = ''; }
     FIELDS.forEach(function (f) { if ($(f.id)) { $(f.id).value = ''; } });
     if ($('m-memo')) { $('m-memo').value = ''; }
+    setDetailOpen(false);
+    setQty(1);
   }
 
   function fillFrom(e, asCopy) {
     if (!e) { clearForm(); return; }
+    /* すでにPFCやメモが入っている記録を開くときは、隠れていると気づけないので開く */
+    setDetailOpen(!!(e.protein || e.fat || e.carb || e.memo));
     if ($('m-date')) { $('m-date').value = asCopy ? C.todayStr() : (e.date || C.todayStr()); }
     setType(e.mealType || guessType());
     if ($('m-name')) { $('m-name').value = e.name || ''; }
+    /* 個数つきで保存された記録は、1個ぶんに戻して表示する。
+       古い記録（個数なし）は、そのまま1個ぶんとして扱う。 */
+    var q = (typeof e.qty === 'number' && e.qty >= 1) ? Math.round(e.qty) : 1;
     FIELDS.forEach(function (f) {
       var el = $(f.id);
       if (!el) { return; }
       var v = e[f.key];
+      if (typeof v === 'number' && isFinite(v) && q > 1) {
+        v = (f.key === 'kcal') ? Math.round(v / q) : C.snapToStep(v / q, 0.1);
+      }
       el.value = (typeof v === 'number' && isFinite(v)) ? String(v) : '';
     });
+    setQty(q);
     if ($('m-memo')) { $('m-memo').value = asCopy ? '' : (e.memo || ''); }
   }
 
@@ -160,6 +174,7 @@ App.Meal = (function () {
       var v = f[fd.key];
       el.value = (typeof v === 'number' && isFinite(v)) ? String(v) : '';
     });
+    setQty(1);
     S.touchMyFood(id);
     hidePicker();
   }
@@ -176,8 +191,10 @@ App.Meal = (function () {
     out.date = date;
     out.mealType = mealType;
 
+    /* 料理名は任意。空なら区分名（朝食・昼食など）を入れる。
+       毎日使うものなので、入力の手間はできるだけ減らす。 */
     var name = ($('m-name') && $('m-name').value) ? $('m-name').value.trim() : '';
-    if (!name) { errors.push('料理名を入力してください。'); }
+    if (!name) { name = labelOfType(mealType); }
     out.name = name.slice(0, 60);
 
     FIELDS.forEach(function (f) {
@@ -204,6 +221,26 @@ App.Meal = (function () {
     });
 
     out.memo = ($('m-memo') && $('m-memo').value) ? $('m-memo').value.trim().slice(0, 100) : '';
+
+    /* 個数ぶんを掛ける。
+       記録に入るのは合計（kcal・PFC）で、内訳として1個ぶんと個数も残す。
+       ホーム画面や集計はこれまでどおり kcal を見るだけでよい。 */
+    var qty = readQty();
+    if (qty === null) {
+      errors.push('個数は1〜99の整数で入力してください。');
+    } else {
+      out.qty = qty;
+      out.unitKcal = out.kcal;
+      if (qty > 1) {
+        if (typeof out.kcal === 'number') { out.kcal = Math.round(out.kcal * qty); }
+        ['protein', 'fat', 'carb'].forEach(function (k) {
+          if (typeof out[k] === 'number') { out[k] = C.snapToStep(out[k] * qty, 0.1); }
+        });
+      }
+      if (typeof out.kcal === 'number' && out.kcal > 20000) {
+        errors.push('合計カロリーが大きすぎます。1個ぶんの値と個数を確認してください。');
+      }
+    }
 
     return { values: out, errors: errors };
   }
@@ -234,13 +271,16 @@ App.Meal = (function () {
     /* マイ食品にも登録する場合 */
     var chk = $('m-save-myfood');
     if (chk && chk.checked) {
+      /* マイ食品には合計ではなく「1個ぶん」を登録する。
+         次に呼び出したとき、個数を変えるだけで済むようにするため。 */
+      var q = (typeof entry.qty === 'number' && entry.qty > 1) ? entry.qty : 1;
       S.saveMyFood({
         name:      entry.name,
         unitLabel: '',
-        kcal:      entry.kcal,
-        protein:   entry.protein,
-        fat:       entry.fat,
-        carb:      entry.carb,
+        kcal:      (typeof entry.kcal === 'number') ? Math.round(entry.kcal / q) : entry.kcal,
+        protein:   (typeof entry.protein === 'number') ? C.snapToStep(entry.protein / q, 0.1) : entry.protein,
+        fat:       (typeof entry.fat === 'number') ? C.snapToStep(entry.fat / q, 0.1) : entry.fat,
+        carb:      (typeof entry.carb === 'number') ? C.snapToStep(entry.carb / q, 0.1) : entry.carb,
         useCount:  0
       });
     }
@@ -272,7 +312,73 @@ App.Meal = (function () {
 
   /* ---------- 初期化 ---------- */
 
+  /* ---------- 個数 ----------
+     入力欄のカロリーは「1個ぶん」。記録には 1個ぶん × 個数 を保存する。
+     あとで見返したときに内訳が分かるよう、1個ぶんと個数も一緒に残す。 */
+
+  function readQty() {
+    var raw = ($('m-qty') && $('m-qty').value) ? $('m-qty').value.trim() : '';
+    var n = Number(raw);
+    if (!isFinite(n) || !C.isInteger(n) || n < 1) { return null; }
+    if (n > 99) { return null; }
+    return n;
+  }
+
+  function setQty(n) {
+    if ($('m-qty')) { $('m-qty').value = String(n); }
+    previewTotal();
+  }
+
+  function bumpQty(d) {
+    var n = readQty() || 1;
+    n = Math.min(99, Math.max(1, n + d));
+    setQty(n);
+  }
+
+  /* 個数が2以上のときだけ合計を出す。1個なら余計なことを言わない。 */
+  function previewTotal() {
+    var el = $('m-total-help');
+    if (!el) { return; }
+
+    var qty = readQty();
+    if (qty === null) { el.textContent = '個数は1〜99の整数で入力してください。'; return; }
+    if (qty === 1) { el.textContent = '1個のままなら、そのまま記録されます。'; return; }
+
+    var raw = ($('m-kcal') && $('m-kcal').value) ? $('m-kcal').value.trim() : '';
+    var unit = Number(raw);
+    if (raw === '' || !isFinite(unit)) { el.textContent = qty + '個ぶんで記録します。'; return; }
+
+    el.innerHTML = unit + ' kcal × ' + qty + '個 = <span class="qty-total">'
+                 + Math.round(unit * qty).toLocaleString('ja-JP') + ' kcal</span> として記録します。';
+  }
+
+  /* PFC・メモの開閉。既定は閉じたまま。
+     毎回使うものではないので、開いた状態を次回に持ち越さない。 */
+  function setDetailOpen(open) {
+    var box = $('meal-detail-box');
+    var btn = $('btn-meal-detail');
+    if (box) { box.hidden = !open; }
+    if (btn) { btn.textContent = open ? 'PFC・メモを閉じる' : 'PFC・メモを入れる'; }
+  }
+
   function init() {
+    var minus = $('m-qty-minus');
+    if (minus) { minus.addEventListener('click', function () { bumpQty(-1); }); }
+    var plus = $('m-qty-plus');
+    if (plus) { plus.addEventListener('click', function () { bumpQty(1); }); }
+    var qi = $('m-qty');
+    if (qi) { qi.addEventListener('input', previewTotal); }
+    var ki = $('m-kcal');
+    if (ki) { ki.addEventListener('input', previewTotal); }
+
+    var det = $('btn-meal-detail');
+    if (det) {
+      det.addEventListener('click', function () {
+        var box = $('meal-detail-box');
+        setDetailOpen(box ? box.hidden : true);
+      });
+    }
+
     var form = $('meal-form');
     if (form) { form.addEventListener('submit', onSubmit); }
 

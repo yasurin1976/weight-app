@@ -66,6 +66,8 @@ App.History = (function () {
       list:  function () { return S.listMeals(); },
       rowText: function (e) {
         var t = e.name;
+        /* 個数つきで記録したものは「×5」を添える */
+        if (typeof e.qty === 'number' && e.qty > 1) { t += ' ×' + e.qty; }
         if (typeof e.kcal === 'number') { t += '　' + e.kcal + 'kcal'; }
         return t;
       },
@@ -118,7 +120,8 @@ App.History = (function () {
         }
         return parts.join('　');
       },
-      lead:  function (e) { return (e.durationMin || '-') + '分'; },
+      /* 時間は手入力ではなく推定値なので、一覧にはセット数を出す */
+      lead:  function (e) { return (e.setCount || (e.reps ? e.reps.length : '-')) + 'セット'; },
       badge: function () { return null; },
       sub:   function (e) { return e.memo || ''; },
       sort:  function () { return 0; },

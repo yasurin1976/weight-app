@@ -30,7 +30,7 @@ App.Calc = (function () {
             ・乖離＝許容量−摂取、7日累積乖離
             ・実測体重からの目安補正の提案（適用はユーザー承認）
             ※Phase 1 の計算関数は変更していません。上に層を足しただけです。 */
-  var VERSION = 'calc-2.0.0';
+  var VERSION = 'calc-2.1.0';
 
   /* 計算に使う固定値 */
   var CONST = {
@@ -184,6 +184,37 @@ App.Calc = (function () {
   /* ---------- 筋トレ ---------- */
 
   /* 時間と強度から正味の消費カロリーを推定する */
+  /* ============================================================
+     筋トレの所要時間の推定
+     ------------------------------------------------------------
+     種目ごとに分数を手入力するのは現実的でないため、
+     セット数と回数からおおよその時間を出します。
+
+       1回あたり 3秒（挙上と戻し）
+       1セットごとに 60秒の休憩
+
+     例：10回×3セット → (30秒×3) + (60秒×3) = 270秒 ＝ 約5分
+
+     これは消費カロリーの推定にしか使いません。
+     筋トレの消費は1日の収支の中では小さいため、
+     この粗さで実用上の支障はありません。
+     ============================================================ */
+
+  var SEC_PER_REP  = 3;
+  var REST_SEC     = 60;
+
+  function strengthMinutesFromReps(reps) {
+    if (!(reps instanceof Array) || !reps.length) { return null; }
+    var totalReps = 0;
+    var i;
+    for (i = 0; i < reps.length; i++) {
+      if (!isNum(reps[i]) || reps[i] < 0) { return null; }
+      totalReps += reps[i];
+    }
+    var sec = totalReps * SEC_PER_REP + reps.length * REST_SEC;
+    return Math.max(1, Math.round(sec / 60));
+  }
+
   function strengthKcal(opts) {
     if (!opts || !isNum(opts.durationMin) || !isNum(opts.weightKg) || !isNum(opts.mets)) { return null; }
     var hours = opts.durationMin / 60;
@@ -940,6 +971,7 @@ App.Calc = (function () {
     dailyActivityKcal:  dailyActivityKcal,
     walkDistanceKm:     walkDistanceKm,
     walkingKcal:        walkingKcal,
+    strengthMinutesFromReps: strengthMinutesFromReps,
     strengthKcal:       strengthKcal,
     cardioKcal:         cardioKcal,
     tefKcal:            tefKcal,

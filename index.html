@@ -250,34 +250,54 @@
         <p class="note" id="myfood-picker-empty" hidden>マイ食品がまだ登録されていません。</p>
       </div>
 
+      <!-- 入れる必要があるのはカロリーだけ。
+           料理名もPFCも任意なので、必須の欄と同じ見た目で並べない。 -->
       <div class="field" style="margin-top:16px">
-        <label for="m-name">料理名 <span class="req">必須</span></label>
-        <input type="text" id="m-name" maxlength="60">
-      </div>
-
-      <div class="field">
         <label for="m-kcal">カロリー（kcal） <span class="req">必須</span></label>
         <input type="number" id="m-kcal" inputmode="numeric" step="1" min="0" max="5000">
+        <p class="field-help">1個ぶんの値を入れてください。入れるのはここだけで大丈夫です。</p>
       </div>
 
-      <div class="field-row">
-        <div class="field">
-          <label for="m-protein">P（g）</label>
-          <input type="number" id="m-protein" inputmode="decimal" step="0.1" min="0" max="500">
+      <!-- 個数。キットカットを5個など、まとめて食べたときに使う。
+           1個あたりのカロリー × 個数 を記録する。 -->
+      <div class="field">
+        <label for="m-qty">個数</label>
+        <div class="qty-row">
+          <button type="button" class="qty-btn" id="m-qty-minus" aria-label="減らす">−</button>
+          <input type="number" id="m-qty" inputmode="numeric" step="1" min="1" max="99" value="1">
+          <button type="button" class="qty-btn" id="m-qty-plus" aria-label="増やす">＋</button>
         </div>
-        <div class="field">
-          <label for="m-fat">F（g）</label>
-          <input type="number" id="m-fat" inputmode="decimal" step="0.1" min="0" max="500">
-        </div>
-        <div class="field">
-          <label for="m-carb">C（g）</label>
-          <input type="number" id="m-carb" inputmode="decimal" step="0.1" min="0" max="500">
-        </div>
+        <p class="field-help" id="m-total-help">1個のままなら、そのまま記録されます。</p>
       </div>
 
       <div class="field">
-        <label for="m-memo">メモ</label>
-        <input type="text" id="m-memo" maxlength="100">
+        <label for="m-name">料理名</label>
+        <input type="text" id="m-name" maxlength="60" placeholder="空欄なら「昼食」などが入ります">
+      </div>
+
+      <button type="button" class="link-btn" id="btn-meal-detail">PFC・メモを入れる</button>
+
+      <div id="meal-detail-box" hidden>
+        <p class="field-help">タンパク質・脂質・炭水化物です。管理していなければ空欄のままで構いません。</p>
+        <div class="field-row">
+          <div class="field">
+            <label for="m-protein">P（g）</label>
+            <input type="number" id="m-protein" inputmode="decimal" step="0.1" min="0" max="500">
+          </div>
+          <div class="field">
+            <label for="m-fat">F（g）</label>
+            <input type="number" id="m-fat" inputmode="decimal" step="0.1" min="0" max="500">
+          </div>
+          <div class="field">
+            <label for="m-carb">C（g）</label>
+            <input type="number" id="m-carb" inputmode="decimal" step="0.1" min="0" max="500">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="m-memo">メモ</label>
+          <input type="text" id="m-memo" maxlength="100">
+        </div>
       </div>
 
       <label class="check-row">
@@ -419,17 +439,30 @@
         </div>
       </div>
 
-      <div class="field">
-        <label for="w-reps">各セットの回数 <span class="req">必須</span></label>
-        <input type="text" id="w-reps" inputmode="numeric" placeholder="例：10+10+8">
-        <p class="field-help" id="w-reps-note">「+」か「,」で区切って入力してください。合計回数は自動計算します。</p>
+      <!-- セット数と回数は別々の欄。
+           セットごとに回数が違うときだけ、自由入力に切り替える。 -->
+      <div id="w-simple-box">
+        <div class="field-row">
+          <div class="field">
+            <label for="w-sets">セット数 <span class="req">必須</span></label>
+            <input type="number" id="w-sets" inputmode="numeric" step="1" min="1" max="20" value="3">
+          </div>
+          <div class="field">
+            <label for="w-rep">1セットの回数 <span class="req">必須</span></label>
+            <input type="number" id="w-rep" inputmode="numeric" step="1" min="1" max="200">
+          </div>
+        </div>
+        <button type="button" class="link-btn" id="btn-reps-vary">セットごとに回数が違う場合</button>
       </div>
 
-      <div class="field">
-        <label for="w-duration">運動時間（分） <span class="req">必須</span></label>
-        <input type="number" id="w-duration" inputmode="numeric" step="1" min="1" max="300">
-        <p class="field-help">消費カロリーの推定に使います。その種目にかけたおよその時間で構いません。</p>
+      <div class="field" id="w-vary-box" hidden>
+        <label for="w-reps">各セットの回数 <span class="req">必須</span></label>
+        <input type="text" id="w-reps" inputmode="numeric" placeholder="例：10+10+8">
+        <p class="field-help">セットごとの回数を「＋」で区切ります。「10+10+8」なら3セットです。</p>
+        <button type="button" class="link-btn" id="btn-reps-simple">同じ回数に戻す</button>
       </div>
+
+      <p class="field-help" id="w-reps-note"></p>
 
       <div class="field">
         <label for="w-memo">メモ</label>
