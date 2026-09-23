@@ -22,8 +22,15 @@ App.Calc = (function () {
             集計期間を「今日から遡った7日」で固定（最後の測定日基準をやめた）
             前週比較 weekOverWeek() を追加（両期間とも minSamples 日以上のときだけ比較）
      1.3.0：1日ぶんをまとめて計算する dailySummary() を追加
-            （摂取・消費の内訳・収支を、保存された生データから毎回計算し直す） */
-  var VERSION = 'calc-1.3.0';
+            （摂取・消費の内訳・収支を、保存された生データから毎回計算し直す）
+     2.0.0：Phase 2。「許容量」と「乖離」の層を追加
+            ・基本摂取目安（維持カロリー − 減量強度による赤字）
+            ・運動加算（マシン表示 × 運動係数、マシン表示がなければMETs推定）
+            ・今日の許容量＝基本摂取目安＋運動加算
+            ・乖離＝許容量−摂取、7日累積乖離
+            ・実測体重からの目安補正の提案（適用はユーザー承認）
+            ※Phase 1 の計算関数は変更していません。上に層を足しただけです。 */
+  var VERSION = 'calc-2.0.0';
 
   /* 計算に使う固定値 */
   var CONST = {
@@ -532,6 +539,326 @@ App.Calc = (function () {
     };
   }
 
+  /* ============================================================
+     Phase 2：許容量と乖離の層
+     ============================================================ */
+
+  /* 減量強度ごとの1日あたり目標赤字（kcal） */
+  var INTENSITY = {
+    light:  280,   /* ゆるめ　週およそ0.25kg */
+    normal: 440,   /* 普通　　週およそ0.40kg */
+    hard:   600    /* きつめ　週およそ0.55kg */
+  };
+
+  function intensityDeficit(key) {
+    return INTENSITY[key] !== undefined ? INTENSITY[key] : INTENSITY.normal;
+  }
+
+  /* ---------- 運動加算 ---------- */
+
+  /* 【注意】運動係数（既定0.70）について
+
+     この1つの数字は、本来は別々の2つの補正をまとめたものです。
+
+       (a) 機器誤差の補正
+           マシンは体重と年齢しか見ていないため、表示は実際より多く出ます。
+       (b) 安静時代謝の差し引き
+           表示には「じっとしていても消費したはずの分」が含まれています。
+           基礎代謝を24時間ぶん別に数えているので、本来は差し引く必要があります。
+
+     (a) は機種ごとの癖、(b) は運動時間と基礎代謝から決まる量で、
+     理論上はまったく別の補正です。ここでは運用を単純にするため
+     1つの係数にまとめていますが、同じ意味ではありません。
+
+     実測との照合でズレが続いたとき、原因が (a) なのか (b) なのかは
+     この形では切り分けられません。切り分けが必要になったら、
+     係数を2つに分けてください。設定から変更できるようにしてあるのは
+     そのためです。 */
+  var DEFAULT_CARDIO_FACTOR = 0.70;
+
+  /* 有酸素1件の加算量。
+     マシン表示があれば「表示 × 係数」、なければMETsから推定します。 */
+  function cardioAddon(entry, opts) {
+    if (!entry) { return 0; }
+    var o = opts || {};
+    var factor = isNum(o.cardioFactor) ? o.cardioFactor : DEFAULT_CARDIO_FACTOR;
+
+    if (isNum(entry.machineKcal)) {
+      return round(Math.max(entry.machineKcal * factor, 0), 0);
+    }
+    if (isNum(entry.durationMin) && isNum(entry.mets) && isNum(o.weightKg)) {
+      /* METs推定はもともと安静分を除いた値なので、係数はかけません */
+      var k = strengthKcal({ durationMin: entry.durationMin, weightKg: o.weightKg, mets: entry.mets });
+      return isNum(k) ? k : 0;
+    }
+    return 0;
+  }
+
+  /* その日の運動加算の合計と内訳 */
+  function exerciseAddonForDate(date, settings, data) {
+    var s = settings || {};
+    var d = data || {};
+    var weightKg = weightForDate(d.body, date);
+
+    var cardioSum = 0, strengthSum = 0;
+
+    (d.cardio || []).forEach(function (e) {
+      if (!e || e.date !== date) { return; }
+      cardioSum += cardioAddon(e, {
+        cardioFactor: isNum(s.cardioFactor) ? s.cardioFactor : DEFAULT_CARDIO_FACTOR,
+        weightKg: weightKg
+      });
+    });
+
+    (d.strength || []).forEach(function (e) {
+      if (!e || e.date !== date) { return; }
+      if (!isNum(e.durationMin) || !isNum(weightKg)) { return; }
+      var mets = isNum(e.mets) ? e.mets : (isNum(s.strengthMets) ? s.strengthMets : 5.0);
+      var k = strengthKcal({ durationMin: e.durationMin, weightKg: weightKg, mets: mets });
+      if (isNum(k)) { strengthSum += k; }
+    });
+
+    return {
+      cardio:   round(cardioSum, 0),
+      strength: round(strengthSum, 0),
+      total:    round(cardioSum + strengthSum, 0)
+    };
+  }
+
+  /* ---------- 基本摂取目安 ---------- */
+
+  /* 運動を除いた維持カロリーを推定する。
+     ・基礎代謝 ＋ 日常活動（基礎代謝×β）＋ 歩行（直近の平均歩数から）
+     ・そのうえで食事誘発性熱産生を織り込む
+       （摂取Iのうち約10%が消化に使われるので、維持量は base÷(1−TEF率)） */
+  function maintenanceIntake(settings, data, refDate) {
+    var s = settings || {};
+    var d = data || {};
+    var date = refDate || todayStr();
+
+    var weightKg = weightForDate(d.body, date);
+    var age = ageFromBirthdate(s.birthdate);
+    var bmrInfo = bmrForDate(d.body, date, {
+      weightKg: weightKg, heightCm: s.heightCm, age: age, sex: s.sex || 'male'
+    });
+    var bmr = bmrInfo.value;
+    if (!isNum(bmr)) { return { value: null, bmr: null, reason: '体重の記録が必要です' }; }
+
+    var beta = isNum(s.beta) ? s.beta : 0.10;
+    var daily = bmr * beta;
+
+    /* 歩行は直近14日の平均歩数から。記録がなければ0として扱う */
+    var from = shiftDate(date, -13);
+    var sum = 0, n = 0;
+    (d.steps || []).forEach(function (r) {
+      if (!r || !isNum(r.steps)) { return; }
+      if (r.date < from || r.date > date) { return; }
+      sum += r.steps; n++;
+    });
+    var avgSteps = n > 0 ? (sum / n) : 0;
+    var walking = (avgSteps > 0 && isNum(weightKg) && isNum(s.strideCm))
+      ? walkingKcal({ steps: avgSteps, strideCm: s.strideCm, weightKg: weightKg })
+      : 0;
+
+    var base = bmr + daily + (isNum(walking) ? walking : 0);
+    var tef = isNum(s.tefRate) ? s.tefRate : 0.10;
+    var value = base / (1 - tef);
+
+    return {
+      value:      round(value, 0),
+      bmr:        bmr,
+      bmrSource:  bmrInfo.source,
+      dailyActivity: round(daily, 0),
+      walking:    round(walking || 0, 0),
+      avgSteps:   Math.round(avgSteps),
+      tefRate:    tef
+    };
+  }
+
+  /* 基本摂取目安。設定に手動値があればそれを優先します。 */
+  function baseTargetKcal(settings, data, refDate) {
+    var s = settings || {};
+
+    if (isNum(s.baseTargetKcal)) {
+      return { value: s.baseTargetKcal, source: 'manual', maintenance: null,
+               deficit: intensityDeficit(s.intensity) };
+    }
+
+    var m = maintenanceIntake(s, data, refDate);
+    if (!isNum(m.value)) {
+      return { value: null, source: 'none', maintenance: m, deficit: intensityDeficit(s.intensity) };
+    }
+    var deficit = intensityDeficit(s.intensity);
+    return {
+      value:       round(m.value - deficit, 0),
+      source:      'auto',
+      maintenance: m,
+      deficit:     deficit
+    };
+  }
+
+  /* ---------- 1日の許容量と乖離 ---------- */
+
+  /* 許容量 ＝ 基本摂取目安 ＋ 運動加算
+     乖離   ＝ 許容量 − 摂取     （プラス＝余っている／マイナス＝超えている） */
+  function allowanceForDate(date, settings, data) {
+    var base = baseTargetKcal(settings, data, date);
+    var addon = exerciseAddonForDate(date, settings, data);
+    var meals = (data && data.meals ? data.meals : []).filter(function (m) { return m && m.date === date; });
+    var intake = sumNutrition(meals);
+
+    var allowance = isNum(base.value) ? round(base.value + addon.total, 0) : null;
+    var hasIntake = intake.count > 0;
+
+    return {
+      date:       date,
+      baseTarget: base.value,
+      baseSource: base.source,
+      deficit:    base.deficit,
+      addon:      addon,
+      allowance:  allowance,
+      intake:     intake,
+      hasIntake:  hasIntake,
+      remaining:  (isNum(allowance) ? round(allowance - intake.kcal, 0) : null),
+      deviation:  (isNum(allowance) && hasIntake) ? round(allowance - intake.kcal, 0) : null,
+      isEstimate: true,
+      calculationVersion: VERSION
+    };
+  }
+
+  /* ---------- 7日累積乖離 ---------- */
+
+  /* 食事の記録がある日だけを数えます。
+     記録し忘れた日を「食べなかった日」として貯金に数えないためです。 */
+  function cumulativeDeviation(endDate, settings, data, days) {
+    var n = days || 7;
+    var end = endDate || todayStr();
+    var start = shiftDate(end, -(n - 1));
+
+    var byDay = [];
+    var sum = 0, withData = 0;
+
+    for (var i = 0; i < n; i++) {
+      var d = shiftDate(start, i);
+      var a = allowanceForDate(d, settings, data);
+      var v = a.deviation;
+      byDay.push({
+        date: d,
+        deviation: v,
+        allowance: a.allowance,
+        intakeKcal: a.hasIntake ? a.intake.kcal : null,
+        addon: a.addon.total
+      });
+      if (isNum(v)) { sum += v; withData++; }
+    }
+
+    var deficitPerDay = intensityDeficit((settings || {}).intensity);
+
+    return {
+      startDate:   start,
+      endDate:     end,
+      days:        n,
+      withData:    withData,
+      byDay:       byDay,
+      total:       withData > 0 ? round(sum, 0) : null,
+      targetTotal: round(deficitPerDay * n, 0),
+      /* 達成率は補助表示。実際の赤字 ÷ 目標赤字 */
+      achievement: (withData > 0 && deficitPerDay > 0)
+        ? round(((deficitPerDay * withData) + sum) / (deficitPerDay * withData) * 100, 0)
+        : null,
+      calculationVersion: VERSION
+    };
+  }
+
+  /* 乖離を運動時間に言い換える（トレッドミル換算・分） */
+  function toExerciseMinutes(kcal, settings, data, refDate) {
+    if (!isNum(kcal)) { return null; }
+    var s = settings || {};
+    var weightKg = weightForDate((data || {}).body, refDate || todayStr());
+    if (!isNum(weightKg)) { return null; }
+    /* トレッドミル早歩き相当 METs6.0 の正味消費から逆算 */
+    var perMin = (6.0 - 1) * weightKg * (1 / 60) * 1.05;
+    if (perMin <= 0) { return null; }
+    return Math.round(Math.abs(kcal) / perMin);
+  }
+
+  /* 乖離を体脂肪の重さに言い換える（kg） */
+  function toFatKg(kcal) {
+    if (!isNum(kcal)) { return null; }
+    return round(kcal / CONST.KCAL_PER_KG_FAT, 2);
+  }
+
+  /* ---------- 基本摂取目安の補正提案 ---------- */
+
+  /* 期間内の乖離合計から理論上の体重変化を出し、7日平均体重の実変化と比べます。
+     【重要】提案するだけで、設定は変更しません。 */
+  function calibrationProposal(settings, data, opts) {
+    var o = opts || {};
+    var end = o.endDate || todayStr();
+    var days = o.days || 14;
+    var minSamples = isNum(o.minSamples) ? o.minSamples
+                     : (isNum((settings || {}).avgMinSamples) ? settings.avgMinSamples : DEFAULT_MIN_SAMPLES);
+    var maxStep = isNum(o.maxStep) ? o.maxStep : 100;   /* 1回の変更幅の上限 */
+
+    var series = primaryWeightSeries((data || {}).body);
+    var curr = averageForWindow(series, end, 7, minSamples);
+    var prev = averageForWindow(series, shiftDate(end, -(days - 1)), 7, minSamples);
+
+    if (!curr.isComplete || !prev.isComplete) {
+      return {
+        comparable: false,
+        reason: '比較するには、いまと' + days + '日前の両方に' + minSamples + '日以上の測定が必要です。',
+        days: days
+      };
+    }
+
+    var cum = cumulativeDeviation(end, settings, data, days);
+    if (!isNum(cum.total) || cum.withData < Math.ceil(days * 0.6)) {
+      return {
+        comparable: false,
+        reason: '食事の記録が足りません（' + days + '日中' + cum.withData + '日）。',
+        days: days
+      };
+    }
+
+    /* 目標どおりなら、この期間で落ちるはずだった量 */
+    var deficitPerDay = intensityDeficit((settings || {}).intensity);
+    var plannedKcal = deficitPerDay * cum.withData;
+    var actualDeficitKcal = plannedKcal + cum.total;       /* 貯金ぶん上積み／借金ぶん目減り */
+    var theoreticalDeltaKg = -actualDeficitKcal / CONST.KCAL_PER_KG_FAT;
+    var actualDeltaKg = round(curr.average - prev.average, 2);
+
+    var gapKg = round(actualDeltaKg - theoreticalDeltaKg, 2);
+    var gapPerDay = round((gapKg * CONST.KCAL_PER_KG_FAT) / cum.withData, 0);
+
+    var base = baseTargetKcal(settings, data, end);
+    var suggested = null;
+    if (isNum(base.value)) {
+      var step = gapPerDay;
+      if (step > maxStep)  { step = maxStep; }
+      if (step < -maxStep) { step = -maxStep; }
+      suggested = round(base.value - step, 0);
+    }
+
+    /* 誤差の範囲なら提案しない（1日50kcal未満のズレは測定誤差に埋もれる） */
+    var meaningful = Math.abs(gapPerDay) >= 50;
+
+    return {
+      comparable:         true,
+      days:               days,
+      daysWithMeals:      cum.withData,
+      theoreticalDeltaKg: round(theoreticalDeltaKg, 2),
+      actualDeltaKg:      actualDeltaKg,
+      gapKg:              gapKg,
+      gapPerDay:          gapPerDay,
+      currentBase:        base.value,
+      suggestedBase:      meaningful ? suggested : null,
+      meaningful:         meaningful,
+      applied:            false,
+      calculationVersion: VERSION
+    };
+  }
+
   /* ---------- 前週比較 ---------- */
 
   /* 直近 n 日と、その前の n 日を比べる。
@@ -622,6 +949,18 @@ App.Calc = (function () {
     weightForDate:      weightForDate,
     bmrForDate:         bmrForDate,
     dailySummary:       dailySummary,
+    INTENSITY:              INTENSITY,
+    DEFAULT_CARDIO_FACTOR:  DEFAULT_CARDIO_FACTOR,
+    intensityDeficit:       intensityDeficit,
+    cardioAddon:            cardioAddon,
+    exerciseAddonForDate:   exerciseAddonForDate,
+    maintenanceIntake:      maintenanceIntake,
+    baseTargetKcal:         baseTargetKcal,
+    allowanceForDate:       allowanceForDate,
+    cumulativeDeviation:    cumulativeDeviation,
+    toExerciseMinutes:      toExerciseMinutes,
+    toFatKg:                toFatKg,
+    calibrationProposal:    calibrationProposal,
     primaryWeightSeries: primaryWeightSeries,
     averageForWindow:   averageForWindow,
     movingAverage:      movingAverage,

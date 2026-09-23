@@ -1,10 +1,10 @@
 /* ============================================================
-   views/history.js  —  履歴一覧
+   views/history.js  —  記録画面（1日ぶんのタイムライン）
    ------------------------------------------------------------
-   日付ごとに、その日の記録をまとめて表示します。
-   表示する種類は SECTIONS に登録します。
-   Step 4・5 で歩数・筋トレ・有酸素を追加するときも、
-   ここに1つ足すだけで済む作りにしています。
+   Phase 2 で「履歴」から「記録」に役割を変えました。
+   既定は今日。日付を前後に送れば過去日も見られます。
+   表示する種類は SECTIONS に登録しているので、
+   写真解析を足しても表示側は変えずに済みます。
    ============================================================ */
 
 var App = App || {};
@@ -15,8 +15,8 @@ App.History = (function () {
   var S = App.Storage;
   var C = App.Calc;
 
-  var PAGE_DAYS = 30;
-  var shownDays = PAGE_DAYS;
+  var LB = App.Labels;
+  var viewDate = null;   /* 表示している日。null なら今日 */
 
   function $(id) { return document.getElementById(id); }
 
@@ -158,25 +158,17 @@ App.History = (function () {
     }
   ];
 
-  /* ---------- 日付ごとにまとめる ---------- */
+  /* ---------- 表示する日 ---------- */
 
-  function buildDays() {
-    var byDate = {};
+  function currentDate() {
+    return viewDate || C.todayStr();
+  }
 
-    SECTIONS.forEach(function (sec) {
-      sec.list().forEach(function (e) {
-        if (!e || !e.date) { return; }
-        if (!byDate[e.date]) { byDate[e.date] = {}; }
-        if (!byDate[e.date][sec.key]) { byDate[e.date][sec.key] = []; }
-        byDate[e.date][sec.key].push(e);
-      });
-    });
-
-    var dates = Object.keys(byDate).sort(function (a, b) {
-      return a < b ? 1 : (a > b ? -1 : 0);   /* 新しい順 */
-    });
-
-    return dates.map(function (d) { return { date: d, groups: byDate[d] }; });
+  function shiftDay(n) {
+    var d = C.shiftDate(currentDate(), n);
+    if (d > C.todayStr()) { return; }        /* 未来には進めない */
+    viewDate = d;
+    render();
   }
 
   /* ---------- 1行を作る ---------- */
@@ -212,51 +204,70 @@ App.History = (function () {
 
   /* ---------- 描画 ---------- */
 
-  function render(reset) {
-    if (reset) { shownDays = PAGE_DAYS; }
-
+  function render() {
+    var date = currentDate();
     var list  = $('history-list');
     var empty = $('history-empty');
-    var more  = $('btn-history-more');
     if (!list) { return; }
 
-    var days = buildDays();
-
-    if (!days.length) {
-      list.innerHTML = '';
-      if (empty) { empty.hidden = false; }
-      if (more)  { more.hidden = true; }
-      return;
+    /* 日付ナビ */
+    var label = $('day-label');
+    if (label) {
+      label.textContent = (date === C.todayStr()) ? '今日　' + C.formatDateJP(date) : C.formatDateJP(date);
     }
-    if (empty) { empty.hidden = true; }
+    var next = $('day-next');
+    if (next) { next.disabled = (date >= C.todayStr()); }
 
+    /* その日の集計 */
+    var settings = S.getSettings();
+    var data = {
+      body: S.listBody(), meals: S.listMeals(), steps: S.listSteps(),
+      strength: S.listStrength(), cardio: S.listCardio()
+    };
+    var a = C.allowanceForDate(date, settings, data);
+
+    var intakeEl = $('day-intake');
+    if (intakeEl) {
+      intakeEl.textContent = a.hasIntake
+        ? (a.intake.kcal.toLocaleString('ja-JP') + ' kcal'
+           + (a.allowance !== null ? '　/　許容 ' + a.allowance.toLocaleString('ja-JP') : ''))
+        : '--';
+    }
+    var devKey = $('day-dev-key');
+    var devEl = $('day-dev');
+    if (devEl) {
+      if (a.deviation === null) {
+        devEl.textContent = '--';
+        if (devKey) { devKey.textContent = '乖離'; }
+      } else {
+        devEl.textContent = LB.signed(a.deviation) + ' kcal';
+        devEl.className = 'kv-val ' + (a.deviation >= 0 ? 'good' : 'bad');
+        if (devKey) { devKey.textContent = LB.forValue(a.deviation); }
+      }
+    }
+
+    /* その日の記録 */
     list.innerHTML = '';
+    var any = false;
 
-    days.slice(0, shownDays).forEach(function (day) {
-      list.appendChild(el('div', 'day-head', C.formatDateJP(day.date)));
+    SECTIONS.forEach(function (sec) {
+      var items = sec.list().filter(function (e) { return e && e.date === date; });
+      if (!items.length) { return; }
+      any = true;
 
-      SECTIONS.forEach(function (sec) {
-        var items = day.groups[sec.key];
-        if (!items || !items.length) { return; }
+      items = items.slice().sort(sec.sort);
+      list.appendChild(el('div', 'sec-head', sec.title));
+      items.forEach(function (e) { list.appendChild(buildRow(sec, e, items)); });
 
-        items = items.slice().sort(sec.sort);
-        list.appendChild(el('div', 'sec-head', sec.title));
-
-        items.forEach(function (e) {
-          list.appendChild(buildRow(sec, e, items));
-        });
-
-        /* 食事はその日の合計も出す */
-        if (sec.key === 'meals') {
-          var t = C.sumNutrition(items);
-          var sum = el('div', 'day-sum');
-          sum.textContent = '合計 ' + t.kcal + 'kcal　P ' + t.protein + '　F ' + t.fat + '　C ' + t.carb;
-          list.appendChild(sum);
-        }
-      });
+      if (sec.key === 'meals') {
+        var t = C.sumNutrition(items);
+        var sum = el('div', 'day-sum');
+        sum.textContent = '合計 ' + t.kcal + 'kcal　P ' + t.protein + '　F ' + t.fat + '　C ' + t.carb;
+        list.appendChild(sum);
+      }
     });
 
-    if (more) { more.hidden = (days.length <= shownDays); }
+    if (empty) { empty.hidden = any; }
   }
 
   /* ---------- 操作 ---------- */
@@ -291,29 +302,29 @@ App.History = (function () {
     }
   }
 
-  function onMore() {
-    shownDays += PAGE_DAYS;
-    render();
-  }
-
   /* ---------- 初期化 ---------- */
 
   function init() {
     var list = $('history-list');
     if (list) { list.addEventListener('click', onListClick); }
 
-    var more = $('btn-history-more');
-    if (more) { more.addEventListener('click', onMore); }
-
     var add = $('btn-history-add');
-    if (add) { add.addEventListener('click', function () { App.Body.open(); }); }
+    if (add) { add.addEventListener('click', function () { App.showScreen('addmenu'); }); }
 
-    render(true);
+    var prev = $('day-prev');
+    if (prev) { prev.addEventListener('click', function () { shiftDay(-1); }); }
+    var next = $('day-next');
+    if (next) { next.addEventListener('click', function () { shiftDay(1); }); }
+
+    render();
   }
+
+  function goToday() { viewDate = null; render(); }
 
   return {
     init:     init,
     render:   render,
+    goToday:  goToday,
     SECTIONS: SECTIONS
   };
 })();

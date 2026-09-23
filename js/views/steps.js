@@ -147,13 +147,13 @@ App.Steps = (function () {
 
   function onCancel() {
     showError(null);
-    if (App.showScreen) { App.showScreen('history'); }
+    if (App.showScreen) { App.showScreen('record'); }
   }
 
   function afterChange() {
-    if (App.History && App.History.render) { App.History.render(true); }
+    if (App.History && App.History.render) { App.History.goToday(); }
     if (App.Home && App.Home.refresh)      { App.Home.refresh(); }
-    if (App.showScreen)                    { App.showScreen('history'); }
+    if (App.showScreen)                    { App.showScreen('record'); }
   }
 
   /* ---------- 初期化 ---------- */

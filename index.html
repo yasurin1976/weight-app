@@ -31,67 +31,57 @@
       <span id="backup-banner-text"></span>
     </div>
 
-    <div class="card">
-      <div class="card-label">最新体重</div>
-      <div class="big-number"><span id="home-weight">--</span><span class="unit">kg</span></div>
-      <div class="meta-line" id="home-weight-at"></div>
-      <div class="sub-row">
-        <div class="sub-item"><span class="sub-label">目標との差</span><span class="sub-value" id="home-weight-diff">--</span></div>
-        <div class="sub-item"><span class="sub-label" id="home-avg7-label">7日平均</span><span class="sub-value" id="home-weight-avg7">--</span></div>
-      </div>
+    <div class="banner banner-warn" id="setup-banner" hidden>
+      <span id="setup-banner-text"></span>
+    </div>
+
+    <div class="card card-hero">
+      <div class="card-label" id="home-remaining-label">今日あと食べられる<span class="est-tag">推定</span></div>
+      <div class="big-number"><span id="home-remaining">--</span><span class="unit">kcal</span></div>
+      <div class="meter"><span id="home-meter-fill" style="width:0%"></span></div>
+      <div class="meta-line" id="home-allowance-line"></div>
     </div>
 
     <div class="card">
-      <div class="card-label">最新体脂肪率</div>
-      <div class="big-number"><span id="home-bodyfat">--</span><span class="unit">%</span></div>
-      <div class="meta-line" id="home-bodyfat-at"></div>
+      <div class="card-label" id="home-dev-label">直近7日の累積</div>
+      <div class="big-number sm"><span id="home-dev">--</span><span class="unit" id="home-dev-unit"></span></div>
+      <div class="zerobar"><i id="home-zerofill"></i><span class="mid"></span></div>
+      <div class="zerolabels"><span id="home-zero-min"></span><span>0</span><span id="home-zero-max"></span></div>
+      <div class="meta-line" id="home-dev-convert"></div>
+      <div class="meta-line dim" id="home-dev-achieve"></div>
     </div>
 
     <div class="card">
-      <div class="card-label">今日のカロリー収支<span class="est-tag">推定</span></div>
-      <div class="kv-grid">
-        <div class="kv"><span class="kv-key">摂取（IN）</span><span class="kv-val" id="home-in">--</span></div>
-        <div class="kv"><span class="kv-key">消費（OUT）</span><span class="kv-val" id="home-out">--</span></div>
-        <div class="kv kv-strong"><span class="kv-key">収支</span><span class="kv-val" id="home-balance">--</span></div>
-        <div class="kv"><span class="kv-key">タンパク質</span><span class="kv-val" id="home-protein">--</span></div>
+      <div class="stat">
+        <span class="stat-key">体重</span>
+        <span class="stat-main" id="home-weight-main">--</span>
+        <span class="stat-sub" id="home-weight-sub"></span>
       </div>
-
-      <button type="button" class="link-btn" id="btn-out-detail">消費の内訳を見る</button>
-
-      <div class="breakdown" id="home-out-breakdown" hidden>
-        <div class="kv"><span class="kv-key">基礎代謝</span><span class="kv-val" id="bd-bmr">--</span></div>
-        <div class="kv"><span class="kv-key">日常活動</span><span class="kv-val" id="bd-daily">--</span></div>
-        <div class="kv"><span class="kv-key">歩行</span><span class="kv-val" id="bd-walk">--</span></div>
-        <div class="kv"><span class="kv-key">筋トレ</span><span class="kv-val" id="bd-strength">--</span></div>
-        <div class="kv"><span class="kv-key">有酸素</span><span class="kv-val" id="bd-cardio">--</span></div>
-        <div class="kv"><span class="kv-key">食事による熱産生</span><span class="kv-val" id="bd-tef">--</span></div>
-        <p class="note" id="bd-note"></p>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">今日の活動</div>
-      <div class="kv-grid">
-        <div class="kv"><span class="kv-key">歩数</span><span class="kv-val" id="home-steps">--</span></div>
-        <div class="kv"><span class="kv-key">筋トレ</span><span class="kv-val" id="home-strength">--</span></div>
-        <div class="kv"><span class="kv-key">有酸素</span><span class="kv-val" id="home-cardio">--</span></div>
+      <div class="stat">
+        <span class="stat-key">体脂肪率</span>
+        <span class="stat-main" id="home-bodyfat-main">--</span>
+        <span class="stat-sub" id="home-bodyfat-sub"></span>
       </div>
     </div>
 
     <div class="quick-actions">
+      <button class="quick-btn primary" type="button" id="btn-quick-plan">食べる前に</button>
       <button class="quick-btn" type="button" id="btn-quick-meal">食事を記録</button>
-      <button class="quick-btn" type="button" id="btn-quick-body">体重を記録</button>
+      <button class="quick-btn" type="button" id="btn-quick-scan">スクショで体重</button>
       <button class="quick-btn" type="button" id="btn-quick-workout">運動を記録</button>
-      <button class="quick-btn" type="button" id="btn-quick-steps">歩数を記録</button>
     </div>
 
   </section>
 
   <!-- ---------- 記録メニュー ---------- -->
-  <section class="screen" id="screen-record" data-title="記録" hidden>
+  <section class="screen" id="screen-addmenu" data-title="記録を追加" hidden>
     <div class="menu-list">
+      <button class="menu-item is-highlight" type="button" id="btn-menu-scan">
+        <span class="menu-title">スクショから読み取る</span>
+        <span class="menu-desc">オムロンの計測結果をAIが読み取ります</span>
+      </button>
       <button class="menu-item" type="button" id="btn-menu-body">
-        <span class="menu-title">体組成を記録</span>
+        <span class="menu-title">体組成を手で入力</span>
         <span class="menu-desc">体重・体脂肪率など</span>
       </button>
       <button class="menu-item" type="button" id="btn-menu-meal">
@@ -118,9 +108,50 @@
   </section>
 
   <!-- ---------- 体組成の記録／編集 ---------- -->
+  <!-- ==========================================================
+       スクリーンショットの読み取り
+       AIが読むだけで、この画面では何も保存しません。
+       読み取ったあとは「読み取り結果の確認」画面に進みます。
+       ========================================================== -->
+  <section class="screen" id="screen-scan" data-title="スクショから読み取る" hidden>
+
+    <div class="card" id="scan-setup" hidden>
+      <p class="scan-note-head">先に読み取りサーバーの設定が必要です</p>
+      <p class="field-help">設定画面の「スクショ読み取り」に、中継サーバーのURLを登録してください。登録が済むまでこの機能は使えません。</p>
+    </div>
+
+    <div id="scan-idle">
+      <div class="card">
+        <p class="scan-lead">オムロンの計測結果のスクリーンショットを選ぶと、体重・体脂肪率などをAIが読み取ります。</p>
+        <p class="field-help">読み取った数値はこの場では保存しません。次の画面で確認・修正してから登録します。画面に写っていない値をアプリが作ることはありません。</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-scan-pick">写真を選ぶ</button>
+      <button type="button" class="btn" id="btn-scan-cancel">キャンセル</button>
+      <p class="note">画像そのものは保存されません。読み取りのあいだだけ使われます。</p>
+    </div>
+
+    <div id="scan-loading" hidden>
+      <div class="card scan-loading-card">
+        <p class="scan-note-head">読み取っています…</p>
+        <p class="field-help">通信の状況によって10秒ほどかかることがあります。</p>
+      </div>
+    </div>
+
+    <div id="scan-error" hidden>
+      <div class="form-error" id="scan-error-text"></div>
+      <button type="button" class="btn btn-primary" id="btn-scan-retry">もう一度選ぶ</button>
+      <button type="button" class="btn" id="btn-scan-manual">手で入力する</button>
+    </div>
+
+    <input type="file" id="scan-file" accept="image/*" hidden>
+
+  </section>
+
   <section class="screen" id="screen-body" data-title="体組成を記録" hidden>
 
     <form id="body-form" novalidate>
+
+      <div class="card scan-note" id="body-scan-note" hidden></div>
 
       <div class="field-row">
         <div class="field">
@@ -527,64 +558,136 @@
 
   </section>
 
-  <!-- ---------- 履歴 ---------- -->
-  <section class="screen" id="screen-history" data-title="履歴" hidden>
+  <!-- ---------- 記録（タイムライン） ---------- -->
+  <section class="screen" id="screen-record" data-title="記録" hidden>
+
+    <div class="daynav">
+      <button type="button" class="daynav-btn" id="day-prev">&#8249;</button>
+      <span class="daynav-label" id="day-label"></span>
+      <button type="button" class="daynav-btn" id="day-next">&#8250;</button>
+    </div>
+
+    <div class="card">
+      <div class="kv-grid">
+        <div class="kv"><span class="kv-key">摂取</span><span class="kv-val" id="day-intake">--</span></div>
+        <div class="kv"><span class="kv-key" id="day-dev-key">乖離</span><span class="kv-val" id="day-dev">--</span></div>
+      </div>
+    </div>
+
     <div id="history-empty" class="placeholder" hidden>
-      <p class="placeholder-title">まだ記録がありません</p>
-      <button type="button" class="btn btn-primary" id="btn-history-add">体組成を記録する</button>
+      <p class="placeholder-title">この日の記録はありません</p>
     </div>
     <div id="history-list"></div>
-    <button type="button" class="btn" id="btn-history-more" hidden>さらに表示</button>
+
+    <button type="button" class="btn btn-primary" id="btn-history-add">＋ 記録を追加</button>
+
   </section>
 
-  <!-- ---------- グラフ ---------- -->
-  <section class="screen" id="screen-chart" data-title="グラフ" hidden>
+  <!-- ---------- 食べる前の判断 ---------- -->
+  <section class="screen" id="screen-plan" data-title="食べる前に" hidden>
 
-    <div class="seg seg-3" id="range-group">
-      <button type="button" class="seg-btn" data-range="30">30日</button>
-      <button type="button" class="seg-btn" data-range="90">90日</button>
-      <button type="button" class="seg-btn" data-range="0">全期間</button>
+    <div class="card card-hero">
+      <div class="card-label">残り<span class="est-tag">推定</span></div>
+      <div class="big-number"><span id="plan-remaining">--</span><span class="unit">kcal</span></div>
+      <div class="meta-line" id="plan-allowance-line"></div>
     </div>
 
-    <div id="chart-empty" class="placeholder" hidden>
-      <p class="placeholder-title">まだ記録がありません</p>
-      <p class="note">体組成を記録すると推移が表示されます。</p>
+    <div class="field">
+      <label for="plan-kcal">これから食べる量（kcal）</label>
+      <input type="number" id="plan-kcal" inputmode="numeric" step="1" min="0" max="5000" placeholder="例：850">
     </div>
 
-    <div id="chart-area">
+    <div id="plan-result" hidden></div>
 
-      <div class="card chart-card">
-        <div class="card-label">体重の推移</div>
-        <div class="legend" id="weight-legend">
-          <span class="legend-item"><i class="swatch" style="background:var(--series-1)"></i>実測（代表体重）</span>
-          <span class="legend-item"><i class="swatch" style="background:var(--series-2)"></i>7日平均</span>
+    <h2 class="section-head">候補から選ぶ</h2>
+    <div class="chips" id="plan-source">
+      <button type="button" class="chip is-on" data-src="myfoods">マイ食品</button>
+      <button type="button" class="chip" data-src="recent">最近の食事</button>
+    </div>
+    <div id="plan-candidates"></div>
+    <p class="note" id="plan-empty" hidden>候補がありません。食事を記録するか、マイ食品を登録すると出てきます。</p>
+
+    <button type="button" class="btn btn-primary" id="btn-plan-eat" hidden>これを食べる（記録する）</button>
+    <button type="button" class="btn" id="btn-plan-close">ホームに戻る</button>
+
+    <p class="note">運動した分は許容量に加算しています。マシン表示のカロリーは設定の運動係数で割り引いています。</p>
+
+  </section>
+
+  <!-- ---------- 推移（7日 / 長期） ---------- -->
+  <section class="screen" id="screen-trend" data-title="推移" hidden>
+
+    <div class="seg seg-2" id="trend-tabs">
+      <button type="button" class="seg-btn is-on" data-tab="week">直近7日</button>
+      <button type="button" class="seg-btn" data-tab="long">長期</button>
+    </div>
+
+    <div id="trend-week">
+      <div class="card card-hero">
+        <div class="card-label" id="wk-label">累積乖離</div>
+        <div class="big-number sm"><span id="wk-total">--</span><span class="unit" id="wk-unit"></span></div>
+        <div class="meta-line dim" id="wk-target"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">日別</div>
+        <div class="week" id="wk-bars"></div>
+        <div class="weekmid"></div>
+        <div class="week week-days" id="wk-days"></div>
+      </div>
+
+      <div class="card">
+        <div class="kv-grid">
+          <div class="kv"><span class="kv-key">運動換算</span><span class="kv-val" id="wk-ex">--</span></div>
+          <div class="kv"><span class="kv-key">体脂肪換算</span><span class="kv-val" id="wk-fat">--</span></div>
+          <div class="kv"><span class="kv-key">記録できた日</span><span class="kv-val" id="wk-days-count">--</span></div>
         </div>
-        <div class="chart-box"><canvas id="chart-weight"></canvas></div>
-        <p class="note" id="weight-chart-note"></p>
       </div>
 
-      <div class="card chart-card">
-        <div class="card-label">体脂肪率の推移</div>
-        <div class="chart-box"><canvas id="chart-bodyfat"></canvas></div>
-        <p class="note" id="bodyfat-chart-note" hidden>体脂肪率の記録がまだありません。</p>
+      <div class="card">
+        <div class="card-label">実測との答え合わせ</div>
+        <div id="wk-calib-body"></div>
+      </div>
+    </div>
+
+    <div id="trend-long" hidden>
+      <div class="seg seg-5" id="range-group">
+        <button type="button" class="seg-btn" data-range="1">1日</button>
+        <button type="button" class="seg-btn" data-range="7">7日</button>
+        <button type="button" class="seg-btn is-on" data-range="30">1か月</button>
+        <button type="button" class="seg-btn" data-range="90">3か月</button>
+        <button type="button" class="seg-btn" data-range="180">6か月</button>
       </div>
 
-      <div class="card chart-card">
-        <div class="card-label">骨格筋量の推移</div>
-        <div class="chart-box"><canvas id="chart-muscle"></canvas></div>
-        <p class="note" id="muscle-chart-note" hidden>骨格筋量の記録がまだありません。</p>
+      <div id="chart-empty" class="placeholder" hidden>
+        <p class="placeholder-title">まだ記録がありません</p>
+        <p class="note">体組成を記録すると推移が表示されます。</p>
       </div>
 
-      <button type="button" class="btn" id="btn-chart-table">数値で見る</button>
-
-      <div class="card" id="chart-table-card" hidden>
-        <div class="table-wrap">
-          <table class="data-table" id="chart-table"></table>
+      <div id="chart-area">
+        <div class="card chart-card">
+          <div class="card-label" id="dev-chart-label">カロリー乖離</div>
+          <div class="chart-box"><canvas id="chart-deviation"></canvas></div>
+          <p class="note" id="dev-chart-note"></p>
         </div>
+
+        <div class="card chart-card">
+          <div class="card-label">体重</div>
+          <div class="legend">
+            <span class="legend-item"><i class="swatch" style="background:var(--series-1)"></i>実測</span>
+            <span class="legend-item"><i class="swatch" style="background:var(--series-2)"></i>7日平均</span>
+          </div>
+          <div class="chart-box"><canvas id="chart-weight"></canvas></div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="card-label">体脂肪率</div>
+          <div class="chart-box"><canvas id="chart-bodyfat"></canvas></div>
+          <p class="note" id="bodyfat-chart-note" hidden>体脂肪率の記録がまだありません。</p>
+        </div>
+
+        <p class="note">家庭用の体組成計は水分量などで変動します。単日の上下ではなく、7日平均の向きで判断してください。</p>
       </div>
-
-      <p class="note">家庭用の体組成計は水分量などで変動します。単日の上下ではなく、7日平均の向きで判断してください。</p>
-
     </div>
 
   </section>
@@ -613,27 +716,17 @@
         <p class="field-help">歩数から歩行距離と消費カロリーを推定するために使います。目安は身長×0.45。</p>
       </div>
 
-      <h2 class="section-head">消費カロリーの推定設定</h2>
-
-      <div class="field">
-        <label for="f-beta">日常活動補正 β</label>
-        <input type="number" id="f-beta" inputmode="decimal" step="0.01" min="0" max="0.5">
-        <p class="field-help">歩数に現れない日常活動（家事・立ち仕事など）を、基礎代謝の何倍として上乗せするかの値です。初期値 0.10。</p>
-      </div>
-
-      <div class="field">
-        <label for="f-mets">筋トレの強度（METs）</label>
-        <input type="number" id="f-mets" inputmode="decimal" step="0.1" min="1" max="12">
-        <p class="field-help">運動の強さを表す数値です。初期値 5.0。値が大きいほど消費カロリーの推定が増えます。</p>
-      </div>
-
-      <div class="field">
-        <label for="f-tef">食事誘発性熱産生 TEF（%）</label>
-        <input type="number" id="f-tef" inputmode="decimal" step="1" min="0" max="30">
-        <p class="field-help">食事の消化に使われるカロリーの割合です。摂取カロリーに対する%。初期値 10%。</p>
-      </div>
-
       <h2 class="section-head">目標</h2>
+
+      <div class="field">
+        <label>減量の強度</label>
+        <div class="seg seg-3" id="f-intensity-group">
+          <button type="button" class="seg-btn" data-intensity="light">ゆるめ</button>
+          <button type="button" class="seg-btn" data-intensity="normal">普通</button>
+          <button type="button" class="seg-btn" data-intensity="hard">きつめ</button>
+        </div>
+        <p class="field-help" id="intensity-help"></p>
+      </div>
 
       <div class="field">
         <label for="f-target-weight">目標体重（kg）</label>
@@ -645,18 +738,67 @@
         <input type="number" id="f-target-bodyfat" inputmode="decimal" step="0.1" min="3" max="60">
       </div>
 
-      <div class="field">
-        <label for="f-target-pace">目標ペース（kg／週）</label>
-        <input type="number" id="f-target-pace" inputmode="decimal" step="0.05" min="0" max="2">
-        <p class="field-help">1週間あたりの減量ペースの目安です。初期値 0.4kg／週。</p>
+      <div class="card">
+        <div class="kv"><span class="kv-key">基本摂取目安</span><span class="kv-val" id="base-target-view">--</span></div>
+        <p class="field-help" id="base-target-note"></p>
+        <button type="button" class="btn btn-outline" id="btn-reset-base" hidden>自動計算に戻す</button>
       </div>
 
-      <h2 class="section-head">平均の設定</h2>
+      <h2 class="section-head">スクショ読み取り</h2>
 
       <div class="field">
-        <label for="f-min-samples">7日平均に必要な測定日数</label>
-        <input type="number" id="f-min-samples" inputmode="numeric" step="1" min="1" max="7">
-        <p class="field-help">直近7日のうち何日測れば正式な7日平均として表示するかの設定です。初期値 5日。これを下回る間は「データ蓄積中」と表示します。</p>
+        <label for="f-relay-url">読み取りサーバーのURL</label>
+        <input type="url" id="f-relay-url" inputmode="url" autocomplete="off" placeholder="https://～.workers.dev">
+        <p class="field-help">オムロンのスクリーンショットをAIに読ませるための中継サーバーです。ここが空だと読み取り機能は使えません。<br>APIキーはこの中継サーバーだけが持ちます。アプリにもGitHubにもキーは入りません。</p>
+      </div>
+
+      <button type="button" class="link-btn" id="btn-advanced">詳細設定を開く</button>
+
+      <div id="advanced-box" hidden>
+
+        <p class="field-help">ここは推定の内部設定です。通常は触る必要がありません。変更すると消費カロリーの計算が変わります。</p>
+
+        <div class="field">
+          <label for="f-stride">歩幅（cm）</label>
+          <input type="number" id="f-stride" inputmode="decimal" step="1" min="30" max="120">
+          <p class="field-help">歩数から歩行距離と消費カロリーを推定するために使います。目安は身長×0.45。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-cardio-factor">運動係数</label>
+          <input type="number" id="f-cardio-factor" inputmode="decimal" step="0.05" min="0.3" max="1">
+          <p class="field-help">マシン表示のカロリーに掛ける値です。初期値0.70。<strong>これは本来は別々の2つの補正をまとめたものです。</strong>（1）マシンは表示が多めに出るという機器誤差の補正、（2）表示に含まれる安静時代謝ぶんの差し引き。理論上は別ものですが、運用を簡単にするため1つにまとめています。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-beta">日常活動補正 β</label>
+          <input type="number" id="f-beta" inputmode="decimal" step="0.01" min="0" max="0.5">
+          <p class="field-help">歩数に現れない日常活動（家事・立ち仕事など）を、基礎代謝の何倍として上乗せするかの値です。初期値 0.10。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-mets">筋トレの強度（METs）</label>
+          <input type="number" id="f-mets" inputmode="decimal" step="0.1" min="1" max="12">
+          <p class="field-help">運動の強さを表す数値です。初期値 5.0。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-tef">食事誘発性熱産生 TEF（%）</label>
+          <input type="number" id="f-tef" inputmode="decimal" step="1" min="0" max="30">
+          <p class="field-help">食事の消化に使われるカロリーの割合です。初期値 10%。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-min-samples">7日平均に必要な測定日数</label>
+          <input type="number" id="f-min-samples" inputmode="numeric" step="1" min="1" max="7">
+          <p class="field-help">直近7日のうち何日測れば正式な7日平均として表示するかの設定です。初期値 5日。</p>
+        </div>
+
+        <div class="field">
+          <label for="f-target-pace">目標ペース（kg／週）</label>
+          <input type="number" id="f-target-pace" inputmode="decimal" step="0.05" min="0" max="2">
+        </div>
+
       </div>
 
       <div id="settings-error" class="form-error" hidden></div>
@@ -733,34 +875,35 @@
 <!-- ============ 下部ナビ ============ -->
 <nav class="app-nav">
   <button class="nav-btn is-active" type="button" data-target="home">
-    <span class="nav-icon">■</span><span class="nav-label">ホーム</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="nav-label">ホーム</span>
   </button>
   <button class="nav-btn" type="button" data-target="record">
-    <span class="nav-icon">＋</span><span class="nav-label">記録</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span><span class="nav-label">記録</span>
   </button>
-  <button class="nav-btn" type="button" data-target="history">
-    <span class="nav-icon">≡</span><span class="nav-label">履歴</span>
-  </button>
-  <button class="nav-btn" type="button" data-target="chart">
-    <span class="nav-icon">◹</span><span class="nav-label">グラフ</span>
+  <button class="nav-btn" type="button" data-target="trend">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l4-5 3 3 5-7"/></svg></span><span class="nav-label">推移</span>
   </button>
   <button class="nav-btn" type="button" data-target="settings">
-    <span class="nav-icon">⚙</span><span class="nav-label">設定</span>
+    <span class="nav-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg></span><span class="nav-label">設定</span>
   </button>
 </nav>
 
 <script src="js/lib/chart.umd.js"></script>
+<script src="js/labels.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/csv.js"></script>
+<script src="js/vision.js"></script>
 <script src="js/views/settings.js"></script>
 <script src="js/views/body.js"></script>
+<script src="js/views/scan.js"></script>
 <script src="js/views/meal.js"></script>
 <script src="js/views/myfoods.js"></script>
 <script src="js/views/steps.js"></script>
 <script src="js/views/strength.js"></script>
 <script src="js/views/cardio.js"></script>
-<script src="js/views/chart.js"></script>
+<script src="js/views/plan.js"></script>
+<script src="js/views/trend.js"></script>
 <script src="js/views/history.js"></script>
 <script src="js/views/home.js"></script>
 <script src="js/app.js"></script>

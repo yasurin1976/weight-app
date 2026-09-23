@@ -8,19 +8,20 @@
 
 var App = App || {};
 
-App.VERSION = '1.0.0 (Phase 1)';
+App.VERSION = '2.1.0 (スクショ読み取り)';
 
 (function () {
   'use strict';
 
   /* 画面の一覧。body は「記録」タブの下にある入力画面です。 */
-  var SCREENS = ['home', 'record', 'body', 'meal', 'myfoods', 'steps', 'strength', 'cardio', 'history', 'chart', 'settings'];
+  var SCREENS = ['home', 'record', 'addmenu', 'plan', 'scan', 'body', 'meal', 'myfoods', 'steps', 'strength', 'cardio', 'trend', 'settings'];
 
   /* 下部ナビのどのタブを光らせるか */
   var NAV_OF = {
-    home: 'home', record: 'record', body: 'record',
-    meal: 'record', myfoods: 'record', steps: 'record', strength: 'record', cardio: 'record',
-    history: 'history', chart: 'chart', settings: 'settings'
+    home: 'home', plan: 'home',
+    record: 'record', addmenu: 'record', scan: 'record', body: 'record', meal: 'record',
+    myfoods: 'record', steps: 'record', strength: 'record', cardio: 'record',
+    trend: 'trend', settings: 'settings'
   };
 
   function $(id) { return document.getElementById(id); }
@@ -57,17 +58,17 @@ App.VERSION = '1.0.0 (Phase 1)';
     if (name === 'home' && App.Home && App.Home.refresh) {
       App.Home.refresh();
     }
-    if (name === 'history' && App.History && App.History.render) {
+    if (name === 'record' && App.History && App.History.render) {
       App.History.render();
     }
     if (name === 'myfoods' && App.MyFoods && App.MyFoods.render) {
       App.MyFoods.render();
     }
-    if (name === 'chart' && App.Chart && App.Chart.render) {
-      App.Chart.render();
+    if (name === 'trend' && App.Trend && App.Trend.render) {
+      App.Trend.render();
     }
-    if (name === 'settings' && App.Settings && App.Settings.renderBackupInfo) {
-      App.Settings.renderBackupInfo();
+    if (name === 'settings' && App.Settings && App.Settings.refresh) {
+      App.Settings.refresh();
     }
   }
 
@@ -115,9 +116,11 @@ App.VERSION = '1.0.0 (Phase 1)';
     }
 
     ensureInitialSettings();
+    App.Storage.ensureMigrated();   /* 古い形式のデータを今の形に合わせる */
 
     bindNav();
 
+    bindMenu('btn-menu-scan',    function () { App.Scan.open(); });
     bindMenu('btn-menu-body',    function () { App.Body.open(); });
     bindMenu('btn-menu-meal',    function () { App.Meal.open(); });
     bindMenu('btn-menu-myfoods', function () { App.MyFoods.open(); });
@@ -127,12 +130,14 @@ App.VERSION = '1.0.0 (Phase 1)';
 
     App.Settings.init();
     App.Body.init();
+    App.Scan.init();
     App.Meal.init();
     App.MyFoods.init();
     App.Steps.init();
     App.Strength.init();
     App.Cardio.init();
-    App.Chart.init();
+    App.Plan.init();
+    App.Trend.init();
     App.History.init();
     App.Home.init();
 

@@ -26,8 +26,13 @@ App.Settings = (function () {
     { id: 'f-target-weight', key: 'targetWeightKg',      type: 'num',   label: '目標体重', min: 30, max: 200 },
     { id: 'f-target-bodyfat',key: 'targetBodyFatPct',    type: 'num',   label: '目標体脂肪率', min: 3, max: 60 },
     { id: 'f-target-pace',   key: 'targetPaceKgPerWeek', type: 'num',   label: '目標ペース', min: 0, max: 2 },
-    { id: 'f-min-samples',   key: 'avgMinSamples',       type: 'int',   label: '7日平均に必要な測定日数', min: 1, max: 7 }
+    { id: 'f-min-samples',   key: 'avgMinSamples',       type: 'int',   label: '7日平均に必要な測定日数', min: 1, max: 7 },
+    { id: 'f-cardio-factor', key: 'cardioFactor',        type: 'num',   label: '運動係数', min: 0.3, max: 1 },
+    /* 読み取りサーバーのURL。空でも構わない（空なら読み取り機能を使わない） */
+    { id: 'f-relay-url',     key: 'relayUrl',            type: 'url',   label: '読み取りサーバーのURL' }
   ];
+
+  var intensity = 'normal';
 
   function $(id) { return document.getElementById(id); }
 
@@ -45,7 +50,66 @@ App.Settings = (function () {
         el.value = (v === null || v === undefined) ? '' : String(v);
       }
     });
+    setIntensity(s.intensity || 'normal');
     updateAgeDisplay();
+  }
+
+  /* ---------- 減量の強度 ---------- */
+
+  function setIntensity(v) {
+    intensity = (v === 'light' || v === 'hard') ? v : 'normal';
+    var g = $('f-intensity-group');
+    if (g) {
+      Array.prototype.forEach.call(g.querySelectorAll('.seg-btn'), function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-intensity') === intensity);
+      });
+    }
+    var help = $('intensity-help');
+    if (help) {
+      var d = C.intensityDeficit(intensity);
+      var kgPerWeek = (d * 7 / 7200).toFixed(2);
+      help.textContent = '1日あたり約' + d + 'kcalの赤字。週およそ' + kgPerWeek + 'kgのペースです。';
+    }
+    renderBaseTarget();
+  }
+
+  /* ---------- 基本摂取目安の表示 ---------- */
+
+  function renderBaseTarget() {
+    var el = $('base-target-view');
+    var note = $('base-target-note');
+    var reset = $('btn-reset-base');
+    if (!el) { return; }
+
+    var s = S.getSettings();
+    s.intensity = intensity;   /* 選択中の強度で試算する */
+
+    var data = {
+      body: S.listBody(), meals: S.listMeals(), steps: S.listSteps(),
+      strength: S.listStrength(), cardio: S.listCardio()
+    };
+    var bt = C.baseTargetKcal(s, data, C.todayStr());
+
+    if (bt.value === null) {
+      el.textContent = '--';
+      if (note) { note.textContent = '体重を記録すると計算できます。'; }
+      if (reset) { reset.hidden = true; }
+      return;
+    }
+
+    el.textContent = bt.value.toLocaleString('ja-JP') + ' kcal';
+
+    if (note) {
+      if (bt.source === 'manual') {
+        note.textContent = '実測に合わせて手動で調整された値です。運動した分はこれに上乗せされます。';
+      } else {
+        var m = bt.maintenance;
+        note.textContent = '維持カロリー ' + m.value.toLocaleString('ja-JP')
+          + '（基礎代謝 ' + m.bmr + ' ＋ 日常活動 ' + m.dailyActivity
+          + ' ＋ 歩行 ' + m.walking + '）から ' + bt.deficit + ' を引いた値です。運動した分はこれに上乗せされます。';
+      }
+    }
+    if (reset) { reset.hidden = (bt.source !== 'manual'); }
   }
 
   /* ---------- 年齢の自動表示 ---------- */
@@ -67,6 +131,17 @@ App.Settings = (function () {
       var el = $(f.id);
       if (!el) { return; }
       var raw = (el.value || '').trim();
+
+      if (f.type === 'url') {
+        /* 空欄でよい。入れるなら https:// で始まる形だけ受け付ける */
+        if (raw === '') { out[f.key] = ''; return; }
+        if (!/^https:\/\/[^\s]+$/.test(raw)) {
+          errors.push(f.label + 'は https:// で始まるURLを入力してください。');
+          return;
+        }
+        out[f.key] = raw.replace(/\/+$/, '');
+        return;
+      }
 
       if (f.type === 'date') {
         if (!raw) { errors.push(f.label + 'を入力してください。'); return; }
@@ -112,6 +187,7 @@ App.Settings = (function () {
 
     /* 性別は男性固定（Step 1 の確定仕様） */
     out.sex = 'male';
+    out.intensity = intensity;
 
     return { values: out, errors: errors };
   }
@@ -161,6 +237,8 @@ App.Settings = (function () {
     }
     flash($('settings-saved'), '保存しました。');
     updateAgeDisplay();
+    renderBaseTarget();
+    if (App.Trend && App.Trend.render) { App.Trend.render(); }
 
     /* ホーム画面の表示にも反映する */
     if (App.Home && App.Home.refresh) { App.Home.refresh(); }
@@ -310,6 +388,41 @@ App.Settings = (function () {
     var csv = $('csv-list');
     if (csv) { csv.addEventListener('click', onCsvClick); }
 
+    var ig = $('f-intensity-group');
+    if (ig) {
+      ig.addEventListener('click', function (ev) {
+        var t = ev.target;
+        while (t && t !== ig) {
+          if (t.getAttribute && t.getAttribute('data-intensity')) {
+            setIntensity(t.getAttribute('data-intensity'));
+            return;
+          }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    var adv = $('btn-advanced');
+    if (adv) {
+      adv.addEventListener('click', function () {
+        var box = $('advanced-box');
+        if (!box) { return; }
+        box.hidden = !box.hidden;
+        adv.textContent = box.hidden ? '詳細設定を開く' : '詳細設定を閉じる';
+      });
+    }
+
+    var reset = $('btn-reset-base');
+    if (reset) {
+      reset.addEventListener('click', function () {
+        if (!window.confirm('基本摂取目安を自動計算に戻します。よろしいですか？')) { return; }
+        var r = S.resetBaseTarget();
+        if (!r.ok) { window.alert(r.error); return; }
+        renderBaseTarget();
+        if (App.Home && App.Home.refresh) { App.Home.refresh(); }
+      });
+    }
+
     var form = $('settings-form');
     if (form) { form.addEventListener('submit', onSubmit); }
 
@@ -327,8 +440,15 @@ App.Settings = (function () {
     renderVersions();
   }
 
+  /* 画面を開くたびに、いまのデータで目安を計算し直す */
+  function refresh() {
+    setIntensity(S.getSettings().intensity || 'normal');
+    renderBackupInfo();
+  }
+
   return {
     init:              init,
+    refresh:           refresh,
     fillForm:          fillForm,
     renderBackupInfo:  renderBackupInfo,
     daysSince:         daysSince

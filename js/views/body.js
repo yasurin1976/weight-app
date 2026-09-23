@@ -29,6 +29,7 @@ App.Body = (function () {
   ];
 
   var editingId = null;   // 編集中の記録ID。新規なら null
+  var scan      = null;   // AI読み取りから来たときだけ入る。{model, analyzedAt, values}
 
   function $(id) { return document.getElementById(id); }
 
@@ -37,6 +38,7 @@ App.Body = (function () {
   /* id を渡すと編集、渡さなければ新規 */
   function open(id) {
     editingId = id || null;
+    clearScan();
     showError(null);
 
     var title = $('screen-body');
@@ -61,6 +63,140 @@ App.Body = (function () {
     if ($('b-time')) { $('b-time').value = C.nowTimeStr(); }
     FIELDS.forEach(function (f) { if ($(f.id)) { $(f.id).value = ''; } });
     if ($('b-memo')) { $('b-memo').value = ''; }
+  }
+
+  /* ============================================================
+     AI読み取りからの確認画面
+     ------------------------------------------------------------
+     読み取った値を入力欄に入れるだけで、保存はしません。
+     人が確認して「登録する」を押したときに、はじめて保存します。
+
+     読み取れなかった項目は空欄のままにします。
+     体重と体脂肪率から体脂肪量を計算する、といった補完はしません。
+     ============================================================ */
+
+  function openFromScan(result) {
+    editingId = null;
+    showError(null);
+
+    scan = {
+      model:      result.model || null,
+      analyzedAt: result.analyzedAt || new Date().toISOString(),
+      values:     {}
+    };
+
+    clearForm();
+
+    var f = result.fields || {};
+
+    /* 日付と時刻。画面に写っていなければ今日・現在時刻を初期値にする */
+    if ($('b-date')) { $('b-date').value = f.date || C.todayStr(); }
+    if ($('b-time')) { $('b-time').value = f.time || C.nowTimeStr(); }
+
+    var read = [];
+    var missing = [];
+
+    FIELDS.forEach(function (fd) {
+      var el = $(fd.id);
+      if (!el) { return; }
+      var v = f[fd.key];
+      if (typeof v === 'number' && isFinite(v)) {
+        el.value = String(v);
+        el.classList.add('is-ai');
+        scan.values[fd.key] = v;
+        read.push(fd.label);
+      } else {
+        el.value = '';
+        el.classList.remove('is-ai');
+        missing.push(fd.label);
+      }
+    });
+
+    renderScanBanner(read, missing, f, result.rounded || []);
+
+    var del = $('btn-body-delete');
+    if (del) { del.hidden = true; }
+
+    var title = $('screen-body');
+    if (title) { title.setAttribute('data-title', '読み取り結果の確認'); }
+
+    var save = $('btn-body-save');
+    if (save) { save.textContent = '確認して登録する'; }
+
+    if (App.showScreen) { App.showScreen('body'); }
+    window.scrollTo(0, 0);
+  }
+
+  function labelOf(key) {
+    var i;
+    for (i = 0; i < FIELDS.length; i++) {
+      if (FIELDS[i].key === key) { return FIELDS[i].label; }
+    }
+    return key;
+  }
+
+  function renderScanBanner(read, missing, f, rounded) {
+    var box = $('body-scan-note');
+    if (!box) { return; }
+    box.hidden = false;
+
+    var lines = [];
+    lines.push('<p class="scan-note-head">AIが読み取りました。数値を確認してください。</p>');
+    lines.push('<p class="scan-note-sub">色のついた欄がAIの読み取り結果です。間違いがあればその場で直せます。</p>');
+
+    if (!f.date) {
+      lines.push('<p class="scan-note-warn">測定日が画面から読み取れなかったため、今日の日付を入れています。日付が違う場合は直してください。</p>');
+    } else if (f.dateFromMonthDay) {
+      /* オムロンの画面には年が出ないので、こちらで補っています。
+         年をまたいだ記録を入れるときに間違いやすいので、必ず知らせます。 */
+      lines.push('<p class="scan-note-warn">画面に年が出ていないため、年は「' + f.date.slice(0, 4) + '年」として入れています。違う場合は直してください。</p>');
+    }
+
+    if (!f.time) { lines.push('<p class="scan-note-warn">測定時刻が読み取れなかったため、現在時刻を入れています。</p>'); }
+
+    if (rounded && rounded.length) {
+      var r = rounded.map(function (x) {
+        return labelOf(x.key) + ' ' + x.from + ' → ' + x.to;
+      });
+      lines.push('<p class="scan-note-warn">このアプリで扱える細かさに合わせて丸めました：' + r.join('、') + '</p>');
+    }
+
+    if (missing.length) {
+      lines.push('<p class="scan-note-warn">読み取れなかった項目は空欄のままです：' + missing.join('・') + '</p>');
+    }
+
+    box.innerHTML = lines.join('');
+  }
+
+  function clearScan() {
+    scan = null;
+    var box = $('body-scan-note');
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    FIELDS.forEach(function (fd) {
+      var el = $(fd.id);
+      if (el) { el.classList.remove('is-ai'); }
+    });
+    var title = $('screen-body');
+    if (title) { title.setAttribute('data-title', '体組成を記録'); }
+    var save = $('btn-body-save');
+    if (save) { save.textContent = '保存する'; }
+  }
+
+  /* 読み取った値が人の手で直されたかどうか */
+  function wasEdited(values) {
+    if (!scan) { return false; }
+    var k;
+    for (k in scan.values) {
+      if (!Object.prototype.hasOwnProperty.call(scan.values, k)) { continue; }
+      if (values[k] !== scan.values[k]) { return true; }
+    }
+    /* 空欄だったところに人が書き足した場合も「直した」とみなす */
+    var i;
+    for (i = 0; i < FIELDS.length; i++) {
+      var key = FIELDS[i].key;
+      if (scan.values[key] === undefined && values[key] !== null && values[key] !== undefined) { return true; }
+    }
+    return false;
   }
 
   function fillFromEntry(e) {
@@ -152,10 +288,22 @@ App.Body = (function () {
     var entry = r.values;
     if (editingId) { entry.id = editingId; }
 
+    /* どうやって入力したかを記録に残す。
+       画像そのものは保存しません（sourceRef は将来クラウドに置いたときの目印）。 */
+    if (scan) {
+      entry.input = S.inputMeta('screenshot', {
+        model:      scan.model,
+        analyzedAt: scan.analyzedAt,
+        sourceRef:  null,
+        edited:     wasEdited(r.values)
+      });
+    }
+
     var res = S.saveBodyEntry(entry);
     if (!res.ok) { showError([res.error]); return; }
 
     editingId = null;
+    clearScan();
     afterChange();
   }
 
@@ -174,15 +322,16 @@ App.Body = (function () {
 
   function onCancel() {
     editingId = null;
+    clearScan();
     showError(null);
-    if (App.showScreen) { App.showScreen('history'); }
+    if (App.showScreen) { App.showScreen('record'); }
   }
 
   /* 保存・削除の後は履歴に戻り、ホームの表示も更新する */
   function afterChange() {
-    if (App.History && App.History.render) { App.History.render(true); }
+    if (App.History && App.History.render) { App.History.goToday(); }
     if (App.Home && App.Home.refresh)      { App.Home.refresh(); }
-    if (App.showScreen)                    { App.showScreen('history'); }
+    if (App.showScreen)                    { App.showScreen('record'); }
   }
 
   /* ---------- 初期化 ---------- */
@@ -200,6 +349,7 @@ App.Body = (function () {
 
   return {
     init: init,
-    open: open
+    open: open,
+    openFromScan: openFromScan
   };
 })();

@@ -15,6 +15,11 @@
   --warn-bg:     #fff4e0;
   --warn-text:   #8a5300;
   --error:       #c0392b;
+  --surface-2:   #e9eaee;
+  --good:        #17794f;
+  --good-bg:     #e2f2ea;
+  --bad:         #b3341f;
+  --bad-bg:      #fae7e3;
   --nav-h:       64px;
   --header-h:    52px;
 }
@@ -31,6 +36,11 @@
     --warn-bg:     #3a2c12;
     --warn-text:   #f0c274;
     --error:       #ff8272;
+    --surface-2:   #272a33;
+    --good:        #4fbf8b;
+    --good-bg:     #16302a;
+    --bad:         #f08573;
+    --bad-bg:      #3a201b;
   }
 }
 
@@ -279,7 +289,8 @@ html,body{
   gap: 2px;
   padding: 0;
 }
-.nav-btn .nav-icon{ font-size: 19px; line-height:1; }
+.nav-btn .nav-icon{ font-size: 19px; line-height:0; display:block; height:22px; }
+.nav-btn .nav-icon svg{ display:block; }
 .nav-btn .nav-label{ font-size: 11px; font-weight: 600; }
 .nav-btn.is-active{ color: var(--accent); }
 
@@ -614,4 +625,220 @@ html,body{
   color: var(--text-sub);
   font-size: 12px;
   font-weight: 700;
+}
+
+/* ============================================================
+   Phase 2 追記：許容量・乖離・タイムライン
+   ============================================================ */
+
+.card-hero{ border-color: var(--accent); }
+
+.big-number.sm{ font-size: 28px; }
+
+.meta-line.dim{ color: var(--text-sub); font-size: 12px; }
+
+/* 0を中心にした乖離バー */
+.zerobar{
+  position: relative;
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  margin: 10px 0 5px;
+  overflow: hidden;
+}
+.zerobar .mid{
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: var(--text-sub); opacity: .5;
+}
+.zerobar i{
+  position: absolute; top: 0; bottom: 0;
+  display: block; border-radius: 99px;
+  transition: width .2s ease, left .2s ease;
+}
+.zerobar i.save{ background: var(--good, #17794f); }
+.zerobar i.debt{ background: var(--bad, #b3341f); }
+.zerolabels{
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter span.over{ background: var(--bad, #b3341f); }
+
+.addon{
+  display: inline-block;
+  font-size: 11px; font-weight: 700;
+  color: var(--good, #17794f);
+  background: var(--good-bg, #e2f2ea);
+  padding: 1px 7px; border-radius: 99px;
+}
+
+/* ホームのクイック操作 */
+.quick-btn.primary{
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.quick-btn .ico{ display: block; font-size: 17px; margin-bottom: 2px; }
+
+/* 日付ナビ */
+.daynav{
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.daynav-btn{
+  appearance: none;
+  width: 44px; height: 44px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  border-radius: 12px;
+  font-size: 20px; font-weight: 700;
+  font-family: inherit;
+  flex: 0 0 auto;
+}
+.daynav-btn:disabled{ opacity: .35; color: var(--text-sub); }
+.daynav-label{
+  flex: 1; text-align: center;
+  font-size: 15px; font-weight: 700;
+}
+
+/* 週の棒グラフ */
+.week{
+  display: flex; align-items: flex-end; gap: 6px;
+  height: 100px; padding: 4px 2px 0;
+}
+.week > div{
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: flex-end; height: 100%;
+}
+.week .b{ border-radius: 3px 3px 0 0; display: block; width: 100%; }
+.week .b.save{ background: var(--good, #17794f); }
+.week .b.debt{ background: var(--bad, #b3341f); }
+.week .b.none{ background: var(--border); }
+.week.week-days{ height: auto; padding-top: 4px; }
+.week .d{
+  font-size: 10.5px; color: var(--text-sub);
+  text-align: center; display: block;
+  font-variant-numeric: tabular-nums;
+}
+.weekmid{ height: 1px; background: var(--border); margin: 0 2px; }
+
+/* 食べる前の判断 */
+.sim{
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  padding: 13px 14px;
+  margin-bottom: 14px;
+}
+.sim.sim-over{ border-left-color: var(--bad, #b3341f); }
+.sim-head{
+  font-weight: 700; font-size: 15px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+}
+.sim-kcal{ font-variant-numeric: tabular-nums; }
+.sim-row{
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px; color: var(--text-sub);
+  margin-top: 7px; padding-top: 7px;
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.sim-row b{ font-size: 15px; }
+.sim-row b.good{ color: var(--good, #17794f); }
+.sim-row b.bad{ color: var(--bad, #b3341f); }
+.sim-note{
+  margin-top: 8px; font-size: 12.5px;
+  color: var(--accent); font-weight: 600;
+}
+
+.pick-item.is-on{
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.kv-val.good{ color: var(--good, #17794f); }
+.kv-val.bad{ color: var(--bad, #b3341f); }
+
+.btn-outline{
+  border-color: var(--accent);
+  color: var(--accent);
+  background: none;
+}
+
+.seg-5{ grid-template-columns: repeat(5, 1fr); }
+.seg-5 .seg-btn{ font-size: 12.5px; padding: 11px 2px; }
+
+/* 体重・体脂肪率の2行表示（1行に詰め込むと折り返して読めなくなるため） */
+.stat{
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "key main" "sub sub";
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat:last-child{ border-bottom: none; }
+.stat-key{
+  grid-area: key;
+  font-size: 15px; color: var(--text-sub);
+  white-space: nowrap;
+}
+.stat-main{
+  grid-area: main;
+  text-align: right;
+  font-size: 24px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stat-sub{
+  grid-area: sub;
+  font-size: 12.5px; color: var(--text-sub);
+  font-variant-numeric: tabular-nums;
+}
+.stat-sub:empty{ display: none; }
+
+/* ============================================================
+   スクショ読み取り（2.1.0）
+   ============================================================ */
+
+/* 記録メニューの先頭に置く「スクショから読み取る」を目立たせる */
+.menu-item.is-highlight{
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.scan-lead{
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.scan-loading-card{ text-align: center; }
+
+/* 確認画面の上に出す説明 */
+.scan-note{
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.scan-note-head{
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.scan-note-sub,
+.scan-note-warn{
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.scan-note-sub{ color: var(--muted); }
+.scan-note-warn{ color: var(--warn-text); }
+
+/* AIが読み取って入れた欄。人が直すべき場所がひと目で分かるようにする */
+input.is-ai{
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }

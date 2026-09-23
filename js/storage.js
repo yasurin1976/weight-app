@@ -13,8 +13,12 @@ var App = App || {};
 App.Storage = (function () {
   'use strict';
 
-  /* データ形式のバージョン。項目の構造を変えたら上げる */
-  var SCHEMA_VERSION = 1;
+  /* データ形式のバージョン。項目の構造を変えたら上げる
+       v1 … Phase 1
+       v2 … Phase 2。設定項目の追加と、各記録の「入力元」欄の追加。
+             記録そのものの形は変えていないので、v1のバックアップは
+             そのまま読み込めます（migrate() が不足分を補います）。 */
+  var SCHEMA_VERSION = 2;
 
   /* localStorage に入れるときの名前の頭につける文字列 */
   var PREFIX = 'wm.';
@@ -27,10 +31,10 @@ App.Storage = (function () {
     meals:       'meals',       // 食事         ← Step 3
     myFoods:     'myFoods',     // マイ食品     ← Step 3
     steps:       'steps',       // 歩数         ← Step 4
-    strength:    'strength',    // 筋トレ       ← Step 5
-    cardio:      'cardio'       // 有酸素       ← Step 5
-                                //   machineKcal は原値のまま保存し、
-                                //   machineKcalType（'gross'/'net'/'unknown'）を併せて持つ
+    strength:    'strength',    // 筋トレ
+    cardio:      'cardio',      // 有酸素
+                                //   machineKcal は原値のまま保存する
+    calibrations:'calibrations' // 基本摂取目安の補正履歴 ← Phase 2
   };
 
   /* ---------- 内部：読み書きの基本 ---------- */
@@ -104,7 +108,18 @@ App.Storage = (function () {
     targetBodyFatPct:   15,
     targetPaceKgPerWeek: 0.4,
     avgWindowDays:      7,           // 平均を取る日数
-    avgMinSamples:      5            // 正式な平均として扱う最低測定日数
+    avgMinSamples:      5,           // 正式な平均として扱う最低測定日数
+
+    /* ---- Phase 2 で追加 ---- */
+    intensity:          'normal',    // 減量強度 light / normal / hard
+    baseTargetKcal:     null,        // 基本摂取目安。null なら自動計算
+    cardioFactor:       0.70,        // 運動係数（機器誤差の補正と安静分の差し引きを兼ねる）
+    lastCalibrationAt:  null,        // 最後に目安を見直した日時
+
+    /* ---- 2.1.0 で追加：スクショ読み取り ---- */
+    /* 中継サーバーのURL。APIキーはここには入りません（中継サーバー側が持ちます）。
+       空のあいだは読み取り機能を使いません。 */
+    relayUrl:           ''
   };
 
   function getSettings() {
@@ -360,6 +375,37 @@ App.Storage = (function () {
     return ok ? { ok: true } : { ok: false, error: '削除できませんでした。' };
   }
 
+  /* ============================================================
+     入力元の記録（Phase 2）
+     ------------------------------------------------------------
+     どの記録も「どうやって入力されたか」を持ちます。
+     いまは手入力だけですが、写真解析を足したときに
+     ・AIの精度を後から検証する
+     ・同じ元データで解析し直す
+     ためにここを使います。
+
+     sourceRef は将来クラウドに画像を置いたときの置き場所の目印です。
+     Phase 2 では画像を保存しないため常に null ですが、
+     欄だけ先に用意しておきます（後から足すとデータの作り直しになるため）。
+     ============================================================ */
+
+  function inputMeta(method, extra) {
+    var e = extra || {};
+    return {
+      method:    method || 'manual',  // manual / photo / screenshot / text
+      model:     e.model || null,     // 使った解析モデル名
+      analyzedAt:e.analyzedAt || null,
+      sourceRef: e.sourceRef || null, // 将来の元データ参照ID（画像など）
+      edited:    e.edited === true    // 解析結果を人が直したか
+    };
+  }
+
+  /* 古い記録にも入力元の欄を補う */
+  function withInputMeta(entry) {
+    if (entry && !entry.input) { entry.input = inputMeta('manual'); }
+    return entry;
+  }
+
   /* ---------- 食事 ---------- */
 
   var MEAL_TYPES = [
@@ -494,6 +540,90 @@ App.Storage = (function () {
   function saveCardio(entry) { return saveOf(KEYS.cardio, entry, 'c'); }
   function deleteCardio(id)  { return deleteOf(KEYS.cardio, id); }
 
+  /* ---------- 基本摂取目安の補正履歴（Phase 2） ---------- */
+
+  function listCalibrations() {
+    return listOf(KEYS.calibrations).sort(function (a, b) {
+      return (a.at || '') < (b.at || '') ? 1 : -1;   /* 新しい順 */
+    });
+  }
+
+  /* 提案を承認したときだけ呼びます。設定値の変更と履歴の記録を同時に行います。 */
+  function applyCalibration(proposal) {
+    if (!proposal || !proposal.comparable || proposal.suggestedBase === null) {
+      return { ok: false, error: '適用できる提案がありません。' };
+    }
+    var s = getSettings();
+    var before = s.baseTargetKcal;
+    var beforeEffective = proposal.currentBase;
+
+    s.baseTargetKcal = proposal.suggestedBase;
+    s.lastCalibrationAt = new Date().toISOString();
+    if (!saveSettings(s)) { return { ok: false, error: '設定を保存できませんでした。' }; }
+
+    var rec = saveOf(KEYS.calibrations, {
+      at:                 s.lastCalibrationAt,
+      beforeSetting:      before,            /* 変更前の設定値（null＝自動計算だった） */
+      beforeEffective:    beforeEffective,   /* 変更前に実際に使われていた値 */
+      after:              proposal.suggestedBase,
+      days:               proposal.days,
+      daysWithMeals:      proposal.daysWithMeals,
+      theoreticalDeltaKg: proposal.theoreticalDeltaKg,
+      actualDeltaKg:      proposal.actualDeltaKg,
+      gapPerDay:          proposal.gapPerDay,
+      approvedByUser:     true,
+      calculationVersion: proposal.calculationVersion
+    }, 'k');
+
+    return rec.ok ? { ok: true, value: proposal.suggestedBase } : rec;
+  }
+
+  /* 自動計算に戻す */
+  function resetBaseTarget() {
+    var s = getSettings();
+    s.baseTargetKcal = null;
+    return saveSettings(s) ? { ok: true } : { ok: false, error: '設定を保存できませんでした。' };
+  }
+
+  /* ---------- データ形式の移行 ---------- */
+
+  /* v1 で保存されたデータを v2 の形に合わせます。
+     記録の中身は変えず、足りない欄を補うだけです。 */
+  function migrate(fromVersion) {
+    if (fromVersion >= SCHEMA_VERSION) { return false; }
+
+    ['meals', 'body', 'cardio', 'strength', 'steps'].forEach(function (name) {
+      var key = KEYS[name];
+      var arr = listOf(key);
+      if (!arr.length) { return; }
+      arr.forEach(withInputMeta);
+      set(key, arr);
+    });
+
+    /* 設定に Phase 2 の項目を補う（既存の値は触らない） */
+    var s = get(KEYS.settings, null);
+    if (s && typeof s === 'object') {
+      if (s.intensity === undefined)         { s.intensity = 'normal'; }
+      if (s.baseTargetKcal === undefined)    { s.baseTargetKcal = null; }
+      if (s.cardioFactor === undefined)      { s.cardioFactor = 0.70; }
+      if (s.lastCalibrationAt === undefined) { s.lastCalibrationAt = null; }
+      set(KEYS.settings, s);
+    }
+
+    var meta = getMeta();
+    meta.schemaVersion = SCHEMA_VERSION;
+    meta.migratedAt = new Date().toISOString();
+    set(KEYS.meta, meta);
+    return true;
+  }
+
+  /* 起動時に呼びます */
+  function ensureMigrated() {
+    var meta = getMeta();
+    var v = (typeof meta.schemaVersion === 'number') ? meta.schemaVersion : 1;
+    return migrate(v);
+  }
+
   /* ---------- JSON バックアップ ---------- */
 
   /* 全データを 1 つのオブジェクトにまとめる */
@@ -543,7 +673,12 @@ App.Storage = (function () {
         rawSet(key, obj.data[key]);
       }
     }
-    return { ok: true };
+
+    /* 古い形式のバックアップなら、読み込んだあとで今の形に合わせます */
+    var v = (typeof obj.schemaVersion === 'number') ? obj.schemaVersion : 1;
+    var migrated = migrate(v);
+
+    return { ok: true, migrated: migrated, fromVersion: v };
   }
 
   /* ---------- 公開する窓口 ---------- */
@@ -592,6 +727,12 @@ App.Storage = (function () {
     getCardio:            getCardio,
     saveCardio:           saveCardio,
     deleteCardio:         deleteCardio,
+    inputMeta:            inputMeta,
+    withInputMeta:        withInputMeta,
+    listCalibrations:     listCalibrations,
+    applyCalibration:     applyCalibration,
+    resetBaseTarget:      resetBaseTarget,
+    ensureMigrated:       ensureMigrated,
     exportAll:        exportAll,
     validateBackup:   validateBackup,
     importAll:        importAll
