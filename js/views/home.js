@@ -77,11 +77,13 @@ App.Home = (function () {
 
     setText('home-remaining', a.remaining.toLocaleString('ja-JP'));
 
+    /* 何割食べたか。超過しても100%で止めて、色で知らせる。 */
     var pct = Math.max(0, Math.min(100, Math.round(a.intake.kcal / a.allowance * 100)));
     var fill = $('home-meter-fill');
     if (fill) {
       fill.style.width = pct + '%';
       fill.classList.toggle('over', a.remaining < 0);
+      fill.classList.toggle('low', a.remaining >= 0 && pct >= 80);
     }
 
     var line = LB.L.intake + ' ' + a.intake.kcal.toLocaleString('ja-JP')
@@ -116,13 +118,14 @@ App.Home = (function () {
     }
 
     setText('home-dev', LB.signed(cum.total));
-    setText('home-dev-unit', ' ' + LB.L.deviationUnit + ' ' + LB.forValue(cum.total));
+    setText('home-dev-unit', ' ' + LB.L.deviationUnit);
+    LB.applyTone($('home-dev'), cum.total);
 
     /* 0中心バー。目盛りは目標の累積赤字ぶんを上限にする */
     var scale = Math.max(cum.targetTotal, Math.abs(cum.total), 1);
     setFill(cum.total, scale);
-    setText('home-zero-min', LB.L.deficit + ' −' + scale.toLocaleString('ja-JP'));
-    setText('home-zero-max', LB.L.surplus + ' ＋' + scale.toLocaleString('ja-JP'));
+    setText('home-zero-min', '−' + scale.toLocaleString('ja-JP'));
+    setText('home-zero-max', '＋' + scale.toLocaleString('ja-JP'));
 
     var min = C.toExerciseMinutes(cum.total, settings, data, today);
     var fat = C.toFatKg(cum.total);
@@ -151,6 +154,170 @@ App.Home = (function () {
     if (min < 60) { return min + '分'; }
     var h = Math.floor(min / 60), m = min % 60;
     return h + '時間' + (m ? m + '分' : '');
+  }
+
+  /* ---------- よく食べるもの ----------
+     毎日ほぼ同じものを食べる場合、入力の大半はここで終わる。
+     1タップで記録し、押し間違いは「取り消す」で戻せる。 */
+
+  var lastFavMealId = null;
+
+  function renderFavorites() {
+    var card = $('home-fav');
+    var list = $('fav-list');
+    var hint = $('fav-hint');
+    if (!card || !list) { return; }
+
+    var foods = S.listMyFoods().slice(0, 4);
+    card.hidden = false;
+    list.innerHTML = '';
+
+    if (!foods.length) {
+      if (hint) { hint.hidden = false; }
+      return;
+    }
+    if (hint) { hint.hidden = true; }
+
+    foods.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fav-btn';
+      b.setAttribute('data-fav', f.id);
+
+      var n = document.createElement('span');
+      n.className = 'fav-name';
+      n.textContent = f.name;
+
+      var k = document.createElement('span');
+      k.className = 'fav-kcal';
+      k.textContent = (typeof f.kcal === 'number' ? f.kcal : '-') + ' kcal';
+
+      b.appendChild(n);
+      b.appendChild(k);
+      list.appendChild(b);
+    });
+  }
+
+  function onFavClick(ev) {
+    var t = ev.target;
+    while (t && t !== ev.currentTarget) {
+      if (t.getAttribute && t.getAttribute('data-fav')) {
+        recordFavorite(t.getAttribute('data-fav'));
+        return;
+      }
+      t = t.parentNode;
+    }
+  }
+
+  function recordFavorite(id) {
+    var f = S.getMyFood(id);
+    if (!f || typeof f.kcal !== 'number') { return; }
+
+    var type = App.Meal.guessType();
+    var res = S.saveMeal({
+      date:     C.todayStr(),
+      mealType: type,
+      name:     f.name,
+      kcal:     f.kcal,
+      protein:  (typeof f.protein === 'number') ? f.protein : null,
+      fat:      (typeof f.fat === 'number') ? f.fat : null,
+      carb:     (typeof f.carb === 'number') ? f.carb : null,
+      memo:     '',
+      qty:      1,
+      unitKcal: f.kcal,
+      input:    S.inputMeta('manual')
+    });
+    if (!res || !res.ok) { return; }
+
+    lastFavMealId = res.id || null;
+    S.touchMyFood(id);
+
+    var undo = $('fav-undo');
+    if (undo) {
+      undo.hidden = false;
+      setText('fav-undo-text', S.mealTypeLabel(type) + 'に「' + f.name + '」' + f.kcal + 'kcal を記録しました');
+    }
+
+    refresh();
+    if (App.History && App.History.render) { App.History.goToday(); }
+  }
+
+  function onFavUndo() {
+    if (!lastFavMealId) { return; }
+    S.deleteMeal(lastFavMealId);
+    lastFavMealId = null;
+    var undo = $('fav-undo');
+    if (undo) { undo.hidden = true; }
+    refresh();
+    if (App.History && App.History.render) { App.History.goToday(); }
+  }
+
+  /* ---------- 目標日からの逆算 ---------- */
+
+  function renderGoal(settings, data, today) {
+    var card = $('home-goal');
+    if (!card) { return; }
+
+    var p = C.deadlinePlan(settings, data, today);
+
+    /* 目標日が未設定なら、この欄は出さない */
+    if (!settings.targetDate) { card.hidden = true; return; }
+    card.hidden = false;
+    card.classList.remove('is-warn', 'is-bad', 'is-done');
+
+    var need = $('goal-need');
+    var dateLabel = C.formatDateShort(settings.targetDate);
+
+    setText('goal-title', '目標 ' + (typeof settings.targetWeightKg === 'number'
+      ? settings.targetWeightKg.toFixed(1) + 'kg' : ''));
+
+    if (p.status === 'done') {
+      card.classList.add('is-done');
+      setText('goal-days', dateLabel + 'まで');
+      if (need) { need.hidden = true; }
+      setText('goal-msg', '目標体重に到達しています。維持に切り替える場合は目標を見直してください。');
+      return;
+    }
+    if (p.status === 'past') {
+      card.classList.add('is-warn');
+      setText('goal-days', dateLabel + 'は過ぎています');
+      if (need) { need.hidden = true; }
+      setText('goal-msg', '目標日を過ぎています。設定画面で新しい日付を入れてください。');
+      return;
+    }
+    if (!p.active) {
+      setText('goal-days', dateLabel + 'まで');
+      if (need) { need.hidden = true; }
+      setText('goal-msg', p.reason === 'no-weight'
+        ? '体重を1回記録すると、必要な赤字を計算します。'
+        : '目標体重を設定すると計算します。');
+      return;
+    }
+
+    if (need) { need.hidden = false; }
+    setText('goal-days', dateLabel + 'まで あと' + p.daysLeft + '日');
+    setText('goal-deficit', p.deficitPerDay.toLocaleString('ja-JP'));
+
+    var msg = '残り ' + p.kgToLose.toFixed(1) + 'kg　'
+            + '必要なペース 週' + p.requiredKgPerWeek.toFixed(2) + 'kg';
+
+    if (p.status === 'impossible') {
+      card.classList.add('is-bad');
+      msg += '。このペースは安全な範囲（週1.0kgまで）を超えます。'
+           + '上限で止めているので、この日付には届きません。'
+           + '無理なく届くのは ' + C.formatDateShort(p.feasibleDate) + ' ごろです。';
+    } else if (p.status === 'bmr-limited') {
+      card.classList.add('is-warn');
+      msg += '。このままだと目安が基礎代謝を下回るため、手前で止めています。'
+           + '運動を記録すると赤字にできる幅が増えます。'
+           + 'いまのままなら ' + C.formatDateShort(p.feasibleDate) + ' ごろの到達です。';
+    } else if (p.status === 'tight') {
+      card.classList.add('is-warn');
+      msg += '。余裕は少なめです。ペースが落ちると間に合わなくなります。';
+    } else {
+      msg += '。このペースなら間に合います。';
+    }
+    setText('goal-msg', msg);
   }
 
   /* ---------- 体重・体脂肪率 ---------- */
@@ -217,6 +384,8 @@ App.Home = (function () {
     var a = C.allowanceForDate(today, settings, data);
 
     renderBanners(a);
+    renderFavorites();
+    renderGoal(settings, data, today);
     renderRemaining(a);
     renderDeviation(settings, data, today);
     renderBody(settings);
@@ -224,6 +393,8 @@ App.Home = (function () {
 
   function init() {
     var binds = [
+      ['btn-fav-undo',      onFavUndo],
+      ['btn-fav-basket',    function () { App.Basket.open(); }],
       ['btn-quick-plan',    function () { App.Plan.open(); }],
       ['btn-quick-meal',    function () { App.Meal.open(); }],
       ['btn-quick-scan',    function () { App.Scan.open(); }],
@@ -233,6 +404,10 @@ App.Home = (function () {
       var el = $(b[0]);
       if (el) { el.addEventListener('click', b[1]); }
     });
+
+    var fav = $('fav-list');
+    if (fav) { fav.addEventListener('click', onFavClick); }
+
     refresh();
   }
 

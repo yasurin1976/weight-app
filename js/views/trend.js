@@ -58,7 +58,8 @@ App.Trend = (function () {
       setText('wk-target', '食事を記録すると計算できます');
     } else {
       setText('wk-total', LB.signed(cum.total));
-      setText('wk-unit', ' ' + LB.L.deviationUnit + ' ' + LB.forValue(cum.total));
+      setText('wk-unit', ' ' + LB.L.deviationUnit);
+      LB.applyTone($('wk-total'), cum.total);
       setText('wk-target', '目標 ' + cum.targetTotal.toLocaleString('ja-JP')
         + ' に対し ' + (cum.achievement === null ? '--' : cum.achievement + '%'));
     }
@@ -100,7 +101,7 @@ App.Trend = (function () {
         var b = document.createElement('span');
         b.className = 'b ' + (d.deviation >= 0 ? 'save' : 'debt');
         b.style.height = Math.max(h, 3) + 'px';
-        b.title = d.date + '　' + LB.signedWithWord(d.deviation);
+        b.title = d.date + '　' + LB.signedUnit(d.deviation);
         cell.appendChild(b);
       } else {
         var none = document.createElement('span');
@@ -250,6 +251,20 @@ App.Trend = (function () {
     };
   }
 
+  /* グラフを出すか、「あと何日」の案内を出すかを切り替える。
+     記録が足りないのに目盛りだけのグラフを出すと、壊れているように見えるため。 */
+  function showChart(boxId, waitId, canvasId, ready) {
+    var box  = $(boxId);
+    var wait = $(waitId);
+    if (box)  { box.hidden  = !ready; }
+    if (wait) { wait.hidden = ready; }
+    if (!ready && charts[canvasId]) {
+      charts[canvasId].destroy();
+      delete charts[canvasId];
+    }
+    return ready;
+  }
+
   function renderLong() {
     var settings = S.getSettings();
     var data = bundle();
@@ -259,13 +274,11 @@ App.Trend = (function () {
     var allSeries = C.primaryWeightSeries(data.body);
     var series = allSeries.filter(function (p) { return p.date >= from; });
 
+    /* 記録が無くてもグラフ欄自体は出す。
+       各グラフが「あと何日で出るか」を個別に伝えるほうが、
+       まとめて「記録がありません」と出すより次にやることが分かる。 */
     var empty = $('chart-empty');
     var area  = $('chart-area');
-    if (!series.length) {
-      if (empty) { empty.hidden = false; }
-      if (area)  { area.hidden = true; }
-      return;
-    }
     if (empty) { empty.hidden = true; }
     if (area)  { area.hidden = false; }
 
@@ -281,24 +294,39 @@ App.Trend = (function () {
       devColors.push((d.deviation >= 0) ? good : bad);
     });
 
-    draw('chart-deviation', 'bar', devLabels, [{
-      label: LB.L.deviationTitle,
-      data: devValues,
-      backgroundColor: devColors,
-      borderRadius: 3,
-      borderSkipped: false
-    }], ' kcal');
+    setText('dev-chart-label', 'カロリー乖離（許容 − 摂取）');
 
-    setText('dev-chart-label', 'カロリー乖離（' + LB.L.surplus + 'が上／' + LB.L.deficit + 'が下）');
-    setText('dev-chart-note', cum.total === null
-      ? '食事の記録がある日だけ表示します。'
-      : ('この期間の累積 ' + LB.signedWithWord(cum.total) + '　記録できた日 ' + cum.withData + '/' + rangeDays + '日'));
+    /* 食事の記録が1日も無ければ、グラフは出さない */
+    if (showChart('dev-chart-box', 'dev-chart-wait', 'chart-deviation', cum.withData > 0)) {
+      draw('chart-deviation', 'bar', devLabels, [{
+        label: LB.L.deviationTitle,
+        data: devValues,
+        backgroundColor: devColors,
+        borderRadius: 3,
+        borderSkipped: false
+      }], ' kcal');
+      setText('dev-chart-note',
+        'この期間の累積 ' + LB.signedUnit(cum.total) + '　記録できた日 ' + cum.withData + '/' + rangeDays + '日');
+    } else {
+      setText('dev-chart-note', '');
+    }
 
     /* --- 体重 --- */
     var minSamples = (typeof settings.avgMinSamples === 'number') ? settings.avgMinSamples : C.DEFAULT_MIN_SAMPLES;
     var ma = C.movingAverage(allSeries, settings.avgWindowDays || 7, minSamples);
     var maBy = {};
     ma.forEach(function (p) { maBy[p.date] = p.average; });
+
+    /* 体重は2日ぶん以上ないと線にならない。1点だけのグラフは出さない。 */
+    var weightReady = series.length >= 2;
+    var wLegend = $('weight-legend');
+    if (wLegend) { wLegend.hidden = !weightReady; }
+    if (!showChart('weight-chart-box', 'weight-chart-wait', 'chart-weight', weightReady)) {
+      setText('weight-wait-count', 'あと' + (2 - series.length) + '日');
+      setText('weight-wait-sub', series.length === 0
+        ? '体重を測って記録すると、ここに推移が出ます。'
+        : '明日また体重を記録すると、線で結んで表示します。');
+    } else {
 
     var wLabels = series.map(function (p) { return C.formatDateShort(p.date); });
     draw('chart-weight', 'line', wLabels, [
@@ -307,6 +335,8 @@ App.Trend = (function () {
         var v = maBy[p.date]; return (v === undefined) ? null : v;
       }), cssVar('--series-2', '#eb6834'), { pointRadius: 0, dash: [6, 4] })
     ], 'kg');
+
+    }
 
     /* --- 体脂肪率 --- */
     var bf = [];
@@ -318,15 +348,11 @@ App.Trend = (function () {
     bf.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
 
     var bfNote = $('bodyfat-chart-note');
-    var bfBox = $('chart-bodyfat') ? $('chart-bodyfat').parentNode : null;
-    if (!bf.length) {
-      if (charts['chart-bodyfat']) { charts['chart-bodyfat'].destroy(); delete charts['chart-bodyfat']; }
-      if (bfBox)  { bfBox.hidden = true; }
-      if (bfNote) { bfNote.hidden = false; }
-    } else {
-      if (bfBox)  { bfBox.hidden = false; }
-      if (bfNote) { bfNote.hidden = true; }
+    if (bfNote) { bfNote.hidden = true; }
 
+    if (!showChart('bodyfat-chart-box', 'bodyfat-chart-wait', 'chart-bodyfat', bf.length >= 2)) {
+      setText('bodyfat-wait-count', 'あと' + (2 - bf.length) + '日');
+    } else {
       var bfMa = C.movingAverage(bf, settings.avgWindowDays || 7, minSamples);
       var bfBy = {};
       bfMa.forEach(function (p) { bfBy[p.date] = p.average; });

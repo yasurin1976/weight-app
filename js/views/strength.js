@@ -128,8 +128,7 @@ App.Strength = (function () {
     editingId = id || null;
     showError(null);
 
-    var sec = $('screen-strength');
-    if (sec) { sec.setAttribute('data-title', editingId ? '筋トレを編集' : '筋トレを記録'); }
+    if (App.Gym) { App.Gym.setTitle(editingId ? '筋トレを編集' : 'エニタイム'); }
 
     fillExerciseList();
 
@@ -154,7 +153,7 @@ App.Strength = (function () {
     if (del) { del.hidden = !editingId; }
 
     renderPast();
-    if (App.showScreen) { App.showScreen('strength'); }
+    if (App.Gym) { App.Gym.show('strength'); }
   }
 
   /* ---------- 種目名の候補と過去の記録 ---------- */

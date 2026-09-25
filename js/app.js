@@ -8,19 +8,19 @@
 
 var App = App || {};
 
-App.VERSION = '2.2.0 (筋トレ入力を修正)';
+App.VERSION = '2.8.0 (まとめて記録)';
 
 (function () {
   'use strict';
 
   /* 画面の一覧。body は「記録」タブの下にある入力画面です。 */
-  var SCREENS = ['home', 'record', 'addmenu', 'plan', 'scan', 'body', 'meal', 'myfoods', 'steps', 'strength', 'cardio', 'trend', 'settings'];
+  var SCREENS = ['home', 'record', 'addmenu', 'plan', 'scan', 'body', 'meal', 'basket', 'myfoods', 'steps', 'gym', 'trend', 'settings'];
 
   /* 下部ナビのどのタブを光らせるか */
   var NAV_OF = {
     home: 'home', plan: 'home',
     record: 'record', addmenu: 'record', scan: 'record', body: 'record', meal: 'record',
-    myfoods: 'record', steps: 'record', strength: 'record', cardio: 'record',
+    myfoods: 'settings', basket: 'record', steps: 'record', gym: 'record',
     trend: 'trend', settings: 'settings'
   };
 
@@ -118,24 +118,30 @@ App.VERSION = '2.2.0 (筋トレ入力を修正)';
     ensureInitialSettings();
     App.Storage.ensureMigrated();   /* 古い形式のデータを今の形に合わせる */
 
+    /* 保存されているテーマを、画面を出す前に反映する（切り替わりのちらつきを防ぐ） */
+    if (App.Settings && App.Settings.applyTheme) {
+      App.Settings.applyTheme(App.Storage.getSettings().theme || 'auto');
+    }
+
     bindNav();
 
     bindMenu('btn-menu-scan',    function () { App.Scan.open(); });
     bindMenu('btn-menu-body',    function () { App.Body.open(); });
     bindMenu('btn-menu-meal',    function () { App.Meal.open(); });
-    bindMenu('btn-menu-myfoods', function () { App.MyFoods.open(); });
+    bindMenu('btn-menu-gym',     function () { App.Strength.open(); });
+    bindMenu('btn-open-myfoods', function () { App.MyFoods.open(); });
     bindMenu('btn-menu-steps',    function () { App.Steps.open(); });
-    bindMenu('btn-menu-strength', function () { App.Strength.open(); });
-    bindMenu('btn-menu-cardio',   function () { App.Cardio.open(); });
 
     App.Settings.init();
     App.Body.init();
     App.Scan.init();
     App.Meal.init();
     App.MyFoods.init();
+    App.Basket.init();
     App.Steps.init();
     App.Strength.init();
     App.Cardio.init();
+    App.Gym.init();
     App.Plan.init();
     App.Trend.init();
     App.History.init();

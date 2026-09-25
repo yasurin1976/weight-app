@@ -185,7 +185,7 @@ App.Plan = (function () {
     html += '<div class="sim-row"><span>食べた後の残り</span><b class="' + (over ? 'bad' : 'good') + '">'
           + LB.signed(r.afterRemaining) + ' kcal</b></div>';
     html += '<div class="sim-row"><span>7日累積</span><b class="' + (r.cumAfter >= 0 ? 'good' : 'bad') + '">'
-          + LB.signedWithWord(r.cumAfter) + '</b></div>';
+          + LB.signedUnit(r.cumAfter) + '</b></div>';
     if (over && r.offsetMin) {
       html += '<div class="sim-note">歩行・トレッドミル約' + r.offsetMin + '分で相殺できます</div>';
     }

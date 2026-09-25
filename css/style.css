@@ -20,28 +20,56 @@
   --good-bg:     #e2f2ea;
   --bad:         #b3341f;
   --bad-bg:      #fae7e3;
+  --series-1:    #2a78d6;
+  --series-2:    #eb6834;
   --nav-h:       64px;
   --header-h:    52px;
 }
 
+/* ダークの配色。
+   背景・カード・境界の段差をはっきりつけ、沈んで見えないようにしています。
+   グラフの2色（実測・7日平均）はこのカード色の上で検証済みです。 */
 @media (prefers-color-scheme: dark){
-  :root{
-    --bg:          #14161a;
-    --surface:     #1e2127;
-    --border:      #313640;
-    --text:        #f1f3f6;
-    --text-sub:    #9aa3b0;
+  :root:not([data-theme="light"]){
+    --bg:          #171a21;
+    --surface:     #212530;
+    --border:      #39404d;
+    --text:        #f5f7fa;
+    --text-sub:    #aab4c2;
     --accent:      #6ea8ff;
-    --accent-soft: #23303f;
-    --warn-bg:     #3a2c12;
-    --warn-text:   #f0c274;
-    --error:       #ff8272;
-    --surface-2:   #272a33;
-    --good:        #4fbf8b;
-    --good-bg:     #16302a;
-    --bad:         #f08573;
-    --bad-bg:      #3a201b;
+    --accent-soft: #24344a;
+    --warn-bg:     #3d2f14;
+    --warn-text:   #f5cd85;
+    --error:       #ff8f80;
+    --surface-2:   #2a2f3b;
+    --good:        #3fc48c;
+    --good-bg:     #17332c;
+    --bad:         #f4826d;
+    --bad-bg:      #3d211c;
+    --series-1:    #3987e5;
+    --series-2:    #d95926;
   }
+}
+
+/* 設定画面で「暗い」を選んだとき（OSの設定に関係なく暗くする） */
+:root[data-theme="dark"]{
+  --bg:          #171a21;
+  --surface:     #212530;
+  --border:      #39404d;
+  --text:        #f5f7fa;
+  --text-sub:    #aab4c2;
+  --accent:      #6ea8ff;
+  --accent-soft: #24344a;
+  --warn-bg:     #3d2f14;
+  --warn-text:   #f5cd85;
+  --error:       #ff8f80;
+  --surface-2:   #2a2f3b;
+  --good:        #3fc48c;
+  --good-bg:     #17332c;
+  --bad:         #f4826d;
+  --bad-bg:      #3d211c;
+  --series-1:    #3987e5;
+  --series-2:    #d95926;
 }
 
 *{ box-sizing: border-box; }
@@ -570,16 +598,7 @@ html,body{
    明モード #2a78d6 / #eb6834、暗モード #3987e5 / #d95926 は
    色覚多様性・コントラストの検査をすべて通過した組み合わせです。
    ============================================================ */
-:root{
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --series-1: #3987e5;
-    --series-2: #d95926;
-  }
-}
+/* 系列の色は上のパレットで定義しています（明・暗・テーマ切替の3か所）。 */
 
 .chart-card{ padding: 16px 12px 12px; }
 .chart-card .card-label{ padding-left: 4px; }
@@ -663,7 +682,29 @@ html,body{
   font-variant-numeric: tabular-nums;
 }
 
-.meter span.over{ background: var(--bad, #b3341f); }
+/* ホームの「今日あと食べられる」バー。
+   いま何割食べたかを一目で出す。Phase 2 の作り直しで
+   このスタイルが抜け落ちており、バーが見えなくなっていた。 */
+.meter{
+  position: relative;
+  height: 12px;
+  margin: 12px 0 8px;
+  background: var(--surface-2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.meter span{
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width .25s ease, background-color .25s ease;
+}
+/* 残りが少ない（8割以上食べた） */
+.meter span.low{ background: var(--warn-text); }
+/* 超過 */
+.meter span.over{ background: var(--bad); }
 
 .addon{
   display: inline-block;
@@ -863,3 +904,198 @@ input.is-ai{
 }
 .qty-btn:active{ background: var(--accent-soft); }
 .qty-total{ color: var(--text); font-weight: 700; }
+
+
+/* ============================================================
+   データがまだ少ないときの表示（2.3.0）
+   ------------------------------------------------------------
+   目盛りだけのグラフを出すと壊れて見えるので、
+   グラフごと隠して「あと何日で出るか」を伝えます。
+   ============================================================ */
+.chart-wait{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 140px;
+  padding: 20px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-align: center;
+}
+.chart-wait-main{
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.chart-wait-sub{
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-sub);
+}
+.chart-wait-count{
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+/* 目標日からの逆算（2.4.0） */
+.goal-card{ border-left: 4px solid var(--accent); }
+.goal-card.is-warn{ border-left-color: var(--warn-text); }
+.goal-card.is-bad{  border-left-color: var(--bad); }
+.goal-card.is-done{ border-left-color: var(--good); }
+
+.goal-need{
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+}
+.goal-need-num{
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.goal-need-unit{ font-size: 13px; color: var(--text-sub); }
+.goal-msg{
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-sub);
+}
+.goal-card.is-warn .goal-msg{ color: var(--warn-text); }
+.goal-card.is-bad  .goal-msg{ color: var(--bad); }
+
+/* 乖離の色分け（2.5.0）
+   「借金 −170」のように言葉と符号で二重に否定していたのをやめ、
+   符号と色だけで方向を示します。 */
+.val-over{  color: var(--bad); }
+.val-under{ color: var(--good); }
+
+/* よく食べるもの（2.6.0）
+   1タップで記録する。押し間違いは「取り消す」で戻せる。 */
+.fav-row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.fav-btn{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.fav-btn:active{ background: var(--accent-soft); }
+.fav-name{
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.fav-kcal{ font-size: 12px; color: var(--text-sub); }
+
+.fav-undo{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--good-bg);
+  font-size: 13px;
+  color: var(--text);
+}
+.fav-undo .link-btn{ margin: 0; flex: none; }
+
+/* エニタイム（2.7.0）のタブ */
+#gym-tab-group{ margin-bottom: 18px; }
+
+/* ============================================================
+   まとめて記録（2.8.0）
+   ------------------------------------------------------------
+   マイ食品を一覧で出し、それぞれの個数を決めて一括登録します。
+   ============================================================ */
+.bk-item{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+/* 選ばれている行は色を付けて、ひと目で分かるようにする */
+.bk-item.is-on{
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.bk-info{ min-width: 0; }
+.bk-name{
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bk-sub{ font-size: 12px; color: var(--text-sub); }
+
+.bk-qty{
+  display: grid;
+  grid-template-columns: 40px 34px 40px;
+  gap: 4px;
+  align-items: center;
+}
+.bk-qty button{
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+}
+.bk-qty button:disabled{ opacity: .35; }
+.bk-qty button:active{ background: var(--accent-soft); }
+.bk-count{
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.bk-count.is-zero{ color: var(--text-sub); font-weight: 500; }
+
+.bk-total{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.bk-total-key{ font-size: 14px; color: var(--text-sub); }
+.bk-total-val{
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

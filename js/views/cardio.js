@@ -142,8 +142,7 @@ App.Cardio = (function () {
     editingId = id || null;
     showError(null);
 
-    var sec = $('screen-cardio');
-    if (sec) { sec.setAttribute('data-title', editingId ? '有酸素を編集' : '有酸素を記録'); }
+    if (App.Gym) { App.Gym.setTitle(editingId ? '有酸素を編集' : 'エニタイム'); }
 
     if (editingId) {
       var e = S.getCardio(editingId) || {};
@@ -176,7 +175,7 @@ App.Cardio = (function () {
     if (del) { del.hidden = !editingId; }
 
     preview();
-    if (App.showScreen) { App.showScreen('cardio'); }
+    if (App.Gym) { App.Gym.show('cardio'); }
   }
 
   function highlightChip(name) {

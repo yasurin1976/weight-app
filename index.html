@@ -51,6 +51,19 @@
       <div class="meta-line dim" id="home-dev-achieve"></div>
     </div>
 
+    <!-- 目標日からの逆算。目標日が未設定なら丸ごと隠す。 -->
+    <div class="card goal-card" id="home-goal" hidden>
+      <div class="kv">
+        <span class="kv-key" id="goal-title">目標</span>
+        <span class="kv-val" id="goal-days">--</span>
+      </div>
+      <div class="goal-need" id="goal-need">
+        <span class="goal-need-num" id="goal-deficit">--</span>
+        <span class="goal-need-unit">kcal/日の赤字が必要</span>
+      </div>
+      <p class="goal-msg" id="goal-msg"></p>
+    </div>
+
     <div class="card">
       <div class="stat">
         <span class="stat-key">体重</span>
@@ -62,6 +75,19 @@
         <span class="stat-main" id="home-bodyfat-main">--</span>
         <span class="stat-sub" id="home-bodyfat-sub"></span>
       </div>
+    </div>
+
+    <!-- よく食べるものを1タップで記録する。
+         毎日ほぼ同じものを食べる人にとっては、ここが入力のすべてになる。 -->
+    <div class="card" id="home-fav" hidden>
+      <div class="card-label">よく食べるもの</div>
+      <div class="fav-row" id="fav-list"></div>
+      <div class="fav-undo" id="fav-undo" hidden>
+        <span id="fav-undo-text"></span>
+        <button type="button" class="link-btn" id="btn-fav-undo">取り消す</button>
+      </div>
+      <p class="field-help" id="fav-hint" hidden>食事を登録するとき「マイ食品にも登録する」にチェックを入れると、ここに並びます。</p>
+      <button type="button" class="link-btn" id="btn-fav-basket">まとめて選ぶ（複数品・個数）</button>
     </div>
 
     <div class="quick-actions">
@@ -80,29 +106,17 @@
         <span class="menu-title">スクショから読み取る</span>
         <span class="menu-desc">オムロンの計測結果をAIが読み取ります</span>
       </button>
-      <button class="menu-item" type="button" id="btn-menu-body">
-        <span class="menu-title">体組成を手で入力</span>
-        <span class="menu-desc">体重・体脂肪率など</span>
-      </button>
       <button class="menu-item" type="button" id="btn-menu-meal">
         <span class="menu-title">食事を記録</span>
-        <span class="menu-desc">料理ごとにカロリーとPFC</span>
-      </button>
-      <button class="menu-item" type="button" id="btn-menu-myfoods">
-        <span class="menu-title">マイ食品リスト</span>
-        <span class="menu-desc">よく食べるものを登録して呼び出す</span>
+        <span class="menu-desc">カロリーだけで登録できます</span>
       </button>
       <button class="menu-item" type="button" id="btn-menu-steps">
         <span class="menu-title">歩数を記録</span>
         <span class="menu-desc">1日1件。距離と消費は自動計算</span>
       </button>
-      <button class="menu-item" type="button" id="btn-menu-strength">
-        <span class="menu-title">筋トレを記録</span>
-        <span class="menu-desc">種目・重量・セット回数・運動時間</span>
-      </button>
-      <button class="menu-item" type="button" id="btn-menu-cardio">
-        <span class="menu-title">有酸素を記録</span>
-        <span class="menu-desc">トレッドミル・水中ウォーキングなど</span>
+      <button class="menu-item" type="button" id="btn-menu-gym">
+        <span class="menu-title">エニタイム</span>
+        <span class="menu-desc">筋トレと有酸素をまとめて記録</span>
       </button>
     </div>
   </section>
@@ -126,6 +140,7 @@
         <p class="field-help">読み取った数値はこの場では保存しません。次の画面で確認・修正してから登録します。画面に写っていない値をアプリが作ることはありません。</p>
       </div>
       <button type="button" class="btn btn-primary" id="btn-scan-pick">写真を選ぶ</button>
+      <button type="button" class="btn" id="btn-scan-manual-idle">手で入力する</button>
       <button type="button" class="btn" id="btn-scan-cancel">キャンセル</button>
       <p class="note">画像そのものは保存されません。読み取りのあいだだけ使われます。</p>
     </div>
@@ -224,6 +239,55 @@
   </section>
 
   <!-- ---------- 食事の記録／編集 ---------- -->
+  <!-- ==========================================================
+       まとめて記録
+       1食に何品も食べるのが普通なので、マイ食品を一覧から選び、
+       それぞれの個数を決めて一括で登録します。
+       保存されるのは従来どおり「1品＝1件」です。
+       ========================================================== -->
+  <section class="screen" id="screen-basket" data-title="まとめて記録" hidden>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="bk-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="bk-date">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>区分 <span class="req">必須</span></label>
+      <div class="seg" id="bk-type-group">
+        <button type="button" class="seg-btn" data-type="breakfast">朝食</button>
+        <button type="button" class="seg-btn" data-type="lunch">昼食</button>
+        <button type="button" class="seg-btn" data-type="dinner">夕食</button>
+        <button type="button" class="seg-btn" data-type="snack">間食</button>
+      </div>
+    </div>
+
+    <h2 class="section-head">食べたものを選ぶ</h2>
+
+    <div id="bk-list"></div>
+
+    <p class="note" id="bk-empty" hidden>
+      マイ食品がまだありません。食事を登録するとき「マイ食品にも登録する」に
+      チェックを入れると、ここに並びます。
+    </p>
+
+    <div class="bk-total" id="bk-total-box">
+      <span class="bk-total-key">合計</span>
+      <span class="bk-total-val" id="bk-total">0 kcal</span>
+    </div>
+
+    <p class="field-help" id="bk-remain"></p>
+
+    <div id="basket-error" class="form-error" hidden></div>
+
+    <button type="button" class="btn btn-primary" id="btn-basket-save">登録する</button>
+    <button type="button" class="btn" id="btn-basket-other">ここに無いものを入力する</button>
+    <button type="button" class="btn" id="btn-basket-cancel">キャンセル</button>
+
+  </section>
+
   <section class="screen" id="screen-meal" data-title="食事を記録" hidden>
 
     <form id="meal-form" novalidate>
@@ -243,7 +307,8 @@
         </div>
       </div>
 
-      <button type="button" class="btn" id="btn-pick-myfood">マイ食品から選ぶ</button>
+      <button type="button" class="btn" id="btn-meal-basket">マイ食品からまとめて選ぶ</button>
+      <button type="button" class="btn" id="btn-pick-myfood">マイ食品から1品だけ選ぶ</button>
 
       <div class="picker" id="myfood-picker" hidden>
         <div id="myfood-picker-list"></div>
@@ -405,7 +470,20 @@
   </section>
 
   <!-- ---------- 筋トレの記録 ---------- -->
-  <section class="screen" id="screen-strength" data-title="筋トレを記録" hidden>
+    <!-- ==========================================================
+       エニタイム（ジム）
+       筋トレと有酸素は同じ場所で行うため、1画面にまとめ、
+       上のタブで入力欄だけを切り替えます。
+       フォームの中身と id は従来のままなので、保存される形も同じです。
+       ========================================================== -->
+  <section class="screen" id="screen-gym" data-title="エニタイム" hidden>
+
+    <div class="seg seg-2" id="gym-tab-group">
+      <button type="button" class="seg-btn is-on" data-gym="strength">筋トレ</button>
+      <button type="button" class="seg-btn" data-gym="cardio">有酸素</button>
+    </div>
+
+    <div id="gym-strength">
 
     <form id="strength-form" novalidate>
 
@@ -479,10 +557,9 @@
 
     </form>
 
-  </section>
+  </div>
 
-  <!-- ---------- 有酸素の記録 ---------- -->
-  <section class="screen" id="screen-cardio" data-title="有酸素を記録" hidden>
+    <div id="gym-cardio" hidden>
 
     <form id="cardio-form" novalidate>
 
@@ -589,7 +666,12 @@
 
     </form>
 
+  </div>
+
   </section>
+
+  <!-- ---------- 有酸素の記録 ---------- -->
+  
 
   <!-- ---------- 記録（タイムライン） ---------- -->
   <section class="screen" id="screen-record" data-title="記録" hidden>
@@ -698,25 +780,41 @@
       </div>
 
       <div id="chart-area">
+        <!-- 記録が足りない間はグラフを出さず、あと何日で出るかを伝える。
+             目盛りだけのグラフは壊れて見えるため。 -->
         <div class="card chart-card">
           <div class="card-label" id="dev-chart-label">カロリー乖離</div>
-          <div class="chart-box"><canvas id="chart-deviation"></canvas></div>
+          <div class="chart-box" id="dev-chart-box"><canvas id="chart-deviation"></canvas></div>
+          <div class="chart-wait" id="dev-chart-wait" hidden>
+            <div class="chart-wait-main">食事を記録すると、ここにグラフが出ます</div>
+            <div class="chart-wait-sub">食べた量と目安の差を、日ごとの棒で表示します。</div>
+          </div>
           <p class="note" id="dev-chart-note"></p>
         </div>
 
         <div class="card chart-card">
           <div class="card-label">体重</div>
-          <div class="legend">
+          <div class="legend" id="weight-legend">
             <span class="legend-item"><i class="swatch" style="background:var(--series-1)"></i>実測</span>
             <span class="legend-item"><i class="swatch" style="background:var(--series-2)"></i>7日平均</span>
           </div>
-          <div class="chart-box"><canvas id="chart-weight"></canvas></div>
+          <div class="chart-box" id="weight-chart-box"><canvas id="chart-weight"></canvas></div>
+          <div class="chart-wait" id="weight-chart-wait" hidden>
+            <div class="chart-wait-sub">グラフが出るまで</div>
+            <div class="chart-wait-count" id="weight-wait-count">あと1日</div>
+            <div class="chart-wait-sub" id="weight-wait-sub">体重を測った日が2日ぶんたまると、線で結んで表示します。</div>
+          </div>
         </div>
 
         <div class="card chart-card">
           <div class="card-label">体脂肪率</div>
-          <div class="chart-box"><canvas id="chart-bodyfat"></canvas></div>
-          <p class="note" id="bodyfat-chart-note" hidden>体脂肪率の記録がまだありません。</p>
+          <div class="chart-box" id="bodyfat-chart-box"><canvas id="chart-bodyfat"></canvas></div>
+          <div class="chart-wait" id="bodyfat-chart-wait" hidden>
+            <div class="chart-wait-sub">グラフが出るまで</div>
+            <div class="chart-wait-count" id="bodyfat-wait-count">あと2日</div>
+            <div class="chart-wait-sub">体組成計で体脂肪率も測ると、あわせて表示します。</div>
+          </div>
+          <p class="note" id="bodyfat-chart-note" hidden></p>
         </div>
 
         <p class="note">家庭用の体組成計は水分量などで変動します。単日の上下ではなく、7日平均の向きで判断してください。</p>
@@ -767,6 +865,13 @@
       </div>
 
       <div class="field">
+        <label for="f-target-date">目標日</label>
+        <input type="date" id="f-target-date">
+        <p class="field-help">「いつまでに」を入れると、残り日数から1日の赤字を逆算して基本摂取目安に反映します。空欄なら下の減量強度を使います。<br>安全なペース（週1.0kgまで・1日1000kcalまで・基礎代謝を下回らない）を超える日付は、手前で止めて知らせます。</p>
+        <button type="button" class="link-btn" id="btn-clear-target-date">目標日をなしにする</button>
+      </div>
+
+      <div class="field">
         <label for="f-target-bodyfat">目標体脂肪率（%）</label>
         <input type="number" id="f-target-bodyfat" inputmode="decimal" step="0.1" min="3" max="60">
       </div>
@@ -775,6 +880,25 @@
         <div class="kv"><span class="kv-key">基本摂取目安</span><span class="kv-val" id="base-target-view">--</span></div>
         <p class="field-help" id="base-target-note"></p>
         <button type="button" class="btn btn-outline" id="btn-reset-base" hidden>自動計算に戻す</button>
+      </div>
+
+      <h2 class="section-head">よく食べるもの</h2>
+
+      <button type="button" class="menu-item" id="btn-open-myfoods">
+        <span class="menu-title">マイ食品リスト</span>
+        <span class="menu-desc">ホームに並ぶ項目の名前やカロリーを直す</span>
+      </button>
+
+      <h2 class="section-head">表示</h2>
+
+      <div class="field">
+        <label>テーマ</label>
+        <div class="seg seg-3" id="f-theme-group">
+          <button type="button" class="seg-btn" data-theme="auto">自動</button>
+          <button type="button" class="seg-btn" data-theme="light">明るい</button>
+          <button type="button" class="seg-btn" data-theme="dark">暗い</button>
+        </div>
+        <p class="field-help">「自動」はiPhoneの設定に合わせます。暗い画面が見づらいときは「明るい」を選んでください。</p>
       </div>
 
       <h2 class="section-head">スクショ読み取り</h2>
@@ -932,9 +1056,11 @@
 <script src="js/views/scan.js"></script>
 <script src="js/views/meal.js"></script>
 <script src="js/views/myfoods.js"></script>
+<script src="js/views/basket.js"></script>
 <script src="js/views/steps.js"></script>
 <script src="js/views/strength.js"></script>
 <script src="js/views/cardio.js"></script>
+<script src="js/views/gym.js"></script>
 <script src="js/views/plan.js"></script>
 <script src="js/views/trend.js"></script>
 <script src="js/views/history.js"></script>

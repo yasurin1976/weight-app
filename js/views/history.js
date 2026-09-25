@@ -239,13 +239,16 @@ App.History = (function () {
     var devKey = $('day-dev-key');
     var devEl = $('day-dev');
     if (devEl) {
+      /* 「借金 −170」は言葉と符号で二重に否定していて読みにくい。
+         見出しは固定し、方向は符号と色だけで示す。 */
+      if (devKey) { devKey.textContent = '許容との差'; }
       if (a.deviation === null) {
         devEl.textContent = '--';
-        if (devKey) { devKey.textContent = '乖離'; }
+        devEl.className = 'kv-val';
       } else {
-        devEl.textContent = LB.signed(a.deviation) + ' kcal';
-        devEl.className = 'kv-val ' + (a.deviation >= 0 ? 'good' : 'bad');
-        if (devKey) { devKey.textContent = LB.forValue(a.deviation); }
+        devEl.textContent = LB.signedUnit(a.deviation);
+        devEl.className = 'kv-val';
+        LB.applyTone(devEl, a.deviation);
       }
     }
 

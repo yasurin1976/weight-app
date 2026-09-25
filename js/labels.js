@@ -6,12 +6,14 @@
    このファイルの右側の文字だけを書き換えてください。
    画面のあちこちを直す必要はありません。
 
-   特に「貯金／借金」は分かりやすい反面、心理的な圧が強い
-   言い方です。固定したものではありません。
+   【2.5.0】「貯金／借金」は数値の表示から外しました。
+   「借金 −170」は言葉と符号で二重に否定していて読みにくいためです。
+   いまは「＋170／−170」と符号と色だけで示しています。
 
-   言い換えの候補（そのまま差し替えられます）：
-     貯金 → 余裕 ／ 余剰 ／ プラス ／ 貯金
-     借金 → 超過 ／ 不足 ／ マイナス ／ 借金
+   言葉を戻したい場合は下の surplus / deficit を書き換え、
+   signedWithWord() を使う側に戻してください。
+     貯金 → 余裕 ／ 余剰 ／ プラス
+     借金 → 超過 ／ 不足 ／ マイナス
    ============================================================ */
 
 var App = App || {};
@@ -68,10 +70,35 @@ App.Labels = (function () {
     return signed(v) + ' ' + L.deviationUnit + ' ' + forValue(v);
   }
 
+  /* 「＋170 kcal」「−170 kcal」。言葉は付けない。 */
+  function signedUnit(v) {
+    if (typeof v !== 'number' || !isFinite(v)) { return '--'; }
+    return signed(v) + ' ' + L.deviationUnit;
+  }
+
+  /* 色分け用のクラス名。超過は赤、余裕は緑、ちょうどは色なし。 */
+  function toneOf(v) {
+    if (typeof v !== 'number' || !isFinite(v)) { return ''; }
+    if (v < 0) { return 'val-over'; }
+    if (v > 0) { return 'val-under'; }
+    return '';
+  }
+
+  /* 要素に値と色をまとめて当てる */
+  function applyTone(el, v) {
+    if (!el) { return; }
+    el.classList.remove('val-over', 'val-under');
+    var t = toneOf(v);
+    if (t) { el.classList.add(t); }
+  }
+
   return {
     L:              L,
     forValue:       forValue,
     signed:         signed,
-    signedWithWord: signedWithWord
+    signedUnit:     signedUnit,
+    signedWithWord: signedWithWord,
+    toneOf:         toneOf,
+    applyTone:      applyTone
   };
 })();

@@ -112,6 +112,10 @@ App.Scan = (function () {
     var manual = $('btn-scan-manual');
     if (manual) { manual.addEventListener('click', onManual); }
 
+    /* 記録メニューから体組成の手入力を外したので、ここを常設の入口にする */
+    var manualIdle = $('btn-scan-manual-idle');
+    if (manualIdle) { manualIdle.addEventListener('click', onManual); }
+
     var cancel = $('btn-scan-cancel');
     if (cancel) { cancel.addEventListener('click', onCancel); }
   }

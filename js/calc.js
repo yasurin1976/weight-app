@@ -30,7 +30,7 @@ App.Calc = (function () {
             ・乖離＝許容量−摂取、7日累積乖離
             ・実測体重からの目安補正の提案（適用はユーザー承認）
             ※Phase 1 の計算関数は変更していません。上に層を足しただけです。 */
-  var VERSION = 'calc-2.1.0';
+  var VERSION = 'calc-2.2.0';
 
   /* 計算に使う固定値 */
   var CONST = {
@@ -100,6 +100,14 @@ App.Calc = (function () {
     if (isNaN(d.getTime())) { return null; }
     d.setDate(d.getDate() + days);
     return todayStr(d);
+  }
+
+  /* 2つの日付の間の日数。from より to が後なら正。 */
+  function daysBetween(from, to) {
+    var a = new Date(from + 'T00:00:00');
+    var b = new Date(to + 'T00:00:00');
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) { return null; }
+    return Math.round((b - a) / 86400000);
   }
 
   /* 'YYYY-MM-DD' を '9/21' のように短く表示する */
@@ -707,6 +715,123 @@ App.Calc = (function () {
   }
 
   /* 基本摂取目安。設定に手動値があればそれを優先します。 */
+  /* ============================================================
+     目標日からの逆算
+     ------------------------------------------------------------
+     「いつまでに何kg」から、1日いくら赤字にすべきかを出します。
+     強度の3段階（ゆるめ／普通／きつめ）は、目標日が無いときの代替です。
+
+     【安全の上限】
+     期限が短すぎると、計算上は無茶な赤字が必要になります。
+     そのまま従うと筋肉が落ち、結局リバウンドします。
+     次の3つで頭打ちにし、止めたことを必ず画面で知らせます。
+
+       1. 週1.0kg まで
+       2. 1日1000kcal の赤字まで
+       3. 摂取が基礎代謝を下回らないところまで
+
+     上限に当たった場合は、その上限で間に合う最短の日付も出します。
+     ============================================================ */
+
+  var SAFETY = {
+    maxKgPerWeek:      1.0,
+    maxDeficitPerDay:  1000
+  };
+
+  function deadlinePlan(settings, data, refDate) {
+    var s = settings || {};
+    var today = refDate || todayStr();
+
+    var out = {
+      active: false, reason: null,
+      targetDate: s.targetDate || null,
+      daysLeft: null, kgToLose: null,
+      requiredPerDay: null, requiredKgPerWeek: null,
+      deficitPerDay: null, capped: false, capReason: null,
+      status: 'none', feasibleDate: null, cap: null
+    };
+
+    if (!s.targetDate) { out.reason = 'no-date'; return out; }
+
+    var current = weightForDate((data || {}).body, today);
+    if (!isNum(current)) { out.reason = 'no-weight'; return out; }
+    if (!isNum(s.targetWeightKg)) { out.reason = 'no-target'; return out; }
+
+    out.daysLeft = daysBetween(today, s.targetDate);
+    out.kgToLose = round(current - s.targetWeightKg, 2);
+
+    if (out.kgToLose <= 0) { out.status = 'done'; return out; }
+    if (out.daysLeft <= 0) { out.status = 'past'; return out; }
+
+    out.requiredPerDay    = Math.round(out.kgToLose * CONST.KCAL_PER_KG_FAT / out.daysLeft);
+    out.requiredKgPerWeek = round(out.kgToLose / out.daysLeft * 7, 2);
+
+    /* ---- 上限は2種類。意味が違うので分けて扱う ----
+       (1) ペースの上限 … 週1.0kg／1日1000kcal。これを超える日付は物理的に無理。
+       (2) 基礎代謝の下限 … 目安が基礎代謝を下回らない範囲。
+           運動ぶんは別に足されるので、上限には直近14日の平均運動量も足して見る。
+           動いていなければ当然ここが厳しくなる。 */
+
+    var rateCap = Math.min(
+      SAFETY.maxDeficitPerDay,
+      Math.round(SAFETY.maxKgPerWeek * CONST.KCAL_PER_KG_FAT / 7)
+    );
+
+    var m = maintenanceIntake(s, data, today);
+    var avgAddon = averageExerciseAddon(s, data, today, 14);
+    var bmrCap = null;
+    if (isNum(m.value) && isNum(m.bmr)) {
+      bmrCap = Math.max(0, Math.round(m.value + avgAddon - m.bmr));
+    }
+
+    out.rateCap  = rateCap;
+    out.bmrCap   = bmrCap;
+    out.avgAddon = avgAddon;
+    out.cap      = (bmrCap === null) ? rateCap : Math.min(rateCap, bmrCap);
+
+    if (out.requiredPerDay > rateCap) {
+      /* 日付そのものが無理 */
+      out.deficitPerDay = out.cap;
+      out.capped        = true;
+      out.capReason     = 'rate';
+      out.status        = 'impossible';
+      out.feasibleDate  = shiftDate(today, Math.ceil(out.kgToLose * CONST.KCAL_PER_KG_FAT / out.cap));
+    } else if (bmrCap !== null && out.requiredPerDay > bmrCap) {
+      /* ペースとしては無理ではないが、このままだと目安が基礎代謝を下回る */
+      out.deficitPerDay = bmrCap;
+      out.capped        = true;
+      out.capReason     = 'bmr';
+      out.status        = 'bmr-limited';
+      out.feasibleDate  = shiftDate(today, Math.ceil(out.kgToLose * CONST.KCAL_PER_KG_FAT / Math.max(1, bmrCap)));
+    } else {
+      out.deficitPerDay = out.requiredPerDay;
+      out.status = (out.requiredPerDay > out.cap * 0.8) ? 'tight' : 'ok';
+    }
+
+    out.active = true;
+    return out;
+  }
+
+  /* 直近 days 日の、1日あたり平均の運動加算 */
+  function averageExerciseAddon(settings, data, date, days) {
+    var n = days || 14;
+    var sum = 0;
+    var i, d;
+    for (i = 0; i < n; i++) {
+      d = shiftDate(date, -i);
+      var a = exerciseAddonForDate(d, settings, data);
+      if (a && isNum(a.total)) { sum += a.total; }
+    }
+    return Math.round(sum / n);
+  }
+
+  /* 今日めざす赤字。目標日があればそちら、無ければ強度の3段階。 */
+  function effectiveDeficit(settings, data, refDate) {
+    var p = deadlinePlan(settings, data, refDate);
+    if (p.active && isNum(p.deficitPerDay)) { return p.deficitPerDay; }
+    return intensityDeficit((settings || {}).intensity);
+  }
+
   function baseTargetKcal(settings, data, refDate) {
     var s = settings || {};
 
@@ -719,7 +844,7 @@ App.Calc = (function () {
     if (!isNum(m.value)) {
       return { value: null, source: 'none', maintenance: m, deficit: intensityDeficit(s.intensity) };
     }
-    var deficit = intensityDeficit(s.intensity);
+    var deficit = effectiveDeficit(s, data, refDate);
     return {
       value:       round(m.value - deficit, 0),
       source:      'auto',
@@ -783,7 +908,7 @@ App.Calc = (function () {
       if (isNum(v)) { sum += v; withData++; }
     }
 
-    var deficitPerDay = intensityDeficit((settings || {}).intensity);
+    var deficitPerDay = effectiveDeficit(settings, data, end);
 
     return {
       startDate:   start,
@@ -853,7 +978,7 @@ App.Calc = (function () {
     }
 
     /* 目標どおりなら、この期間で落ちるはずだった量 */
-    var deficitPerDay = intensityDeficit((settings || {}).intensity);
+    var deficitPerDay = effectiveDeficit(settings, data, end);
     var plannedKcal = deficitPerDay * cum.withData;
     var actualDeficitKcal = plannedKcal + cum.total;       /* 貯金ぶん上積み／借金ぶん目減り */
     var theoreticalDeltaKg = -actualDeficitKcal / CONST.KCAL_PER_KG_FAT;
@@ -981,6 +1106,11 @@ App.Calc = (function () {
     weightForDate:      weightForDate,
     bmrForDate:         bmrForDate,
     dailySummary:       dailySummary,
+    SAFETY:                 SAFETY,
+    daysBetween:            daysBetween,
+    averageExerciseAddon:   averageExerciseAddon,
+    deadlinePlan:           deadlinePlan,
+    effectiveDeficit:       effectiveDeficit,
     INTENSITY:              INTENSITY,
     DEFAULT_CARDIO_FACTOR:  DEFAULT_CARDIO_FACTOR,
     intensityDeficit:       intensityDeficit,

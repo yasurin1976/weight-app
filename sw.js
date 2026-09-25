@@ -12,7 +12,7 @@
    古いキャッシュは自動で削除されます。
    ============================================================ */
 
-var CACHE_NAME = 'weight-app-v2.2.0';
+var CACHE_NAME = 'weight-app-v2.8.0';
 
 var ASSETS = [
   './',
@@ -30,9 +30,11 @@ var ASSETS = [
   './js/views/body.js',
   './js/views/meal.js',
   './js/views/myfoods.js',
+  './js/views/basket.js',
   './js/views/steps.js',
   './js/views/strength.js',
   './js/views/cardio.js',
+  './js/views/gym.js',
   './js/views/scan.js',
   './js/views/plan.js',
   './js/views/trend.js',

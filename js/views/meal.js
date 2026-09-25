@@ -371,6 +371,9 @@ App.Meal = (function () {
     var ki = $('m-kcal');
     if (ki) { ki.addEventListener('input', previewTotal); }
 
+    var bk = $('btn-meal-basket');
+    if (bk) { bk.addEventListener('click', function () { App.Basket.open(); }); }
+
     var det = $('btn-meal-detail');
     if (det) {
       det.addEventListener('click', function () {
@@ -410,6 +413,7 @@ App.Meal = (function () {
   }
 
   return {
+    guessType: guessType,
     init: init,
     open: open
   };

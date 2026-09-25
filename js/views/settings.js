@@ -29,7 +29,9 @@ App.Settings = (function () {
     { id: 'f-min-samples',   key: 'avgMinSamples',       type: 'int',   label: '7日平均に必要な測定日数', min: 1, max: 7 },
     { id: 'f-cardio-factor', key: 'cardioFactor',        type: 'num',   label: '運動係数', min: 0.3, max: 1 },
     /* 読み取りサーバーのURL。空でも構わない（空なら読み取り機能を使わない） */
-    { id: 'f-relay-url',     key: 'relayUrl',            type: 'url',   label: '読み取りサーバーのURL' }
+    { id: 'f-relay-url',     key: 'relayUrl',            type: 'url',   label: '読み取りサーバーのURL' },
+    /* 目標日は任意。空欄なら減量強度の3段階を使う */
+    { id: 'f-target-date',   key: 'targetDate',          type: 'optdate', label: '目標日' }
   ];
 
   var intensity = 'normal';
@@ -51,10 +53,38 @@ App.Settings = (function () {
       }
     });
     setIntensity(s.intensity || 'normal');
+    applyTheme(s.theme || 'auto');
     updateAgeDisplay();
   }
 
   /* ---------- 減量の強度 ---------- */
+
+  /* ---------- 表示テーマ ----------
+     auto はiPhoneの設定に合わせる。light / dark は <html> に印を付けて
+     CSS 側で上書きする。選んだ瞬間に切り替わり、その場で保存する。 */
+
+  var theme = 'auto';
+
+  function applyTheme(v) {
+    theme = (v === 'light' || v === 'dark') ? v : 'auto';
+    var root = document.documentElement;
+    if (theme === 'auto') { root.removeAttribute('data-theme'); }
+    else { root.setAttribute('data-theme', theme); }
+
+    var g = $('f-theme-group');
+    if (g) {
+      Array.prototype.forEach.call(g.querySelectorAll('.seg-btn'), function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-theme') === theme);
+      });
+    }
+  }
+
+  function setTheme(v) {
+    applyTheme(v);
+    var st = S.getSettings();
+    st.theme = theme;
+    S.saveSettings(st);
+  }
 
   function setIntensity(v) {
     intensity = (v === 'light' || v === 'hard') ? v : 'normal';
@@ -66,9 +96,15 @@ App.Settings = (function () {
     }
     var help = $('intensity-help');
     if (help) {
-      var d = C.intensityDeficit(intensity);
-      var kgPerWeek = (d * 7 / 7200).toFixed(2);
-      help.textContent = '1日あたり約' + d + 'kcalの赤字。週およそ' + kgPerWeek + 'kgのペースです。';
+      var td = ($('f-target-date') && $('f-target-date').value.trim()) ? $('f-target-date').value.trim() : null;
+      if (td) {
+        help.textContent = '目標日が入っているため、いまは目標日からの逆算が使われます。'
+                         + '強度は目標日を空欄にしたときに使われます。';
+      } else {
+        var d = C.intensityDeficit(intensity);
+        var kgPerWeek = (d * 7 / 7200).toFixed(2);
+        help.textContent = '1日あたり約' + d + 'kcalの赤字。週およそ' + kgPerWeek + 'kgのペースです。';
+      }
     }
     renderBaseTarget();
   }
@@ -83,6 +119,11 @@ App.Settings = (function () {
 
     var s = S.getSettings();
     s.intensity = intensity;   /* 選択中の強度で試算する */
+    /* 画面で編集中の目標日も反映する（保存前でも結果が見えるように） */
+    if ($('f-target-date')) {
+      var td = $('f-target-date').value.trim();
+      s.targetDate = td || null;
+    }
 
     var data = {
       body: S.listBody(), meals: S.listMeals(), steps: S.listSteps(),
@@ -104,9 +145,11 @@ App.Settings = (function () {
         note.textContent = '実測に合わせて手動で調整された値です。運動した分はこれに上乗せされます。';
       } else {
         var m = bt.maintenance;
+        var src = s.targetDate ? '目標日からの逆算' : '減量強度';
         note.textContent = '維持カロリー ' + m.value.toLocaleString('ja-JP')
           + '（基礎代謝 ' + m.bmr + ' ＋ 日常活動 ' + m.dailyActivity
-          + ' ＋ 歩行 ' + m.walking + '）から ' + bt.deficit + ' を引いた値です。運動した分はこれに上乗せされます。';
+          + ' ＋ 歩行 ' + m.walking + '）から、' + src + 'ぶんの赤字 ' + bt.deficit
+          + ' を引いた値です。運動した分はこれに上乗せされます。';
       }
     }
     if (reset) { reset.hidden = (bt.source !== 'manual'); }
@@ -131,6 +174,14 @@ App.Settings = (function () {
       var el = $(f.id);
       if (!el) { return; }
       var raw = (el.value || '').trim();
+
+      if (f.type === 'optdate') {
+        if (raw === '') { out[f.key] = null; return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) { errors.push(f.label + 'が正しくありません。'); return; }
+        if (raw <= C.todayStr()) { errors.push(f.label + 'には明日以降の日付を入れてください。'); return; }
+        out[f.key] = raw;
+        return;
+      }
 
       if (f.type === 'url') {
         /* 空欄でよい。入れるなら https:// で始まる形だけ受け付ける */
@@ -388,6 +439,33 @@ App.Settings = (function () {
     var csv = $('csv-list');
     if (csv) { csv.addEventListener('click', onCsvClick); }
 
+    var tdi = $('f-target-date');
+    if (tdi) {
+      tdi.addEventListener('change', function () { setIntensity(intensity); });
+    }
+
+    var clr = $('btn-clear-target-date');
+    if (clr) {
+      clr.addEventListener('click', function () {
+        if ($('f-target-date')) { $('f-target-date').value = ''; }
+        setIntensity(intensity);
+      });
+    }
+
+    var tg = $('f-theme-group');
+    if (tg) {
+      tg.addEventListener('click', function (ev) {
+        var t = ev.target;
+        while (t && t !== tg) {
+          if (t.getAttribute && t.getAttribute('data-theme')) {
+            setTheme(t.getAttribute('data-theme'));
+            return;
+          }
+          t = t.parentNode;
+        }
+      });
+    }
+
     var ig = $('f-intensity-group');
     if (ig) {
       ig.addEventListener('click', function (ev) {
@@ -447,6 +525,7 @@ App.Settings = (function () {
   }
 
   return {
+    applyTheme: applyTheme,
     init:              init,
     refresh:           refresh,
     fillForm:          fillForm,

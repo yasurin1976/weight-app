@@ -105,6 +105,8 @@ App.Storage = (function () {
     strengthMets:       5.0,          // 筋トレの強度
     tefRate:            0.10,         // 食事誘発性熱産生の割合
     targetWeightKg:     64,
+    /* 目標日。null なら減量強度の3段階を使う（2.4.0で追加） */
+    targetDate:         null,
     targetBodyFatPct:   15,
     targetPaceKgPerWeek: 0.4,
     avgWindowDays:      7,           // 平均を取る日数
@@ -115,6 +117,10 @@ App.Storage = (function () {
     baseTargetKcal:     null,        // 基本摂取目安。null なら自動計算
     cardioFactor:       0.70,        // 運動係数（機器誤差の補正と安静分の差し引きを兼ねる）
     lastCalibrationAt:  null,        // 最後に目安を見直した日時
+
+    /* ---- 2.3.0 で追加：表示テーマ ---- */
+    /* auto … iPhoneの設定に合わせる / light / dark */
+    theme:              'auto',
 
     /* ---- 2.1.0 で追加：スクショ読み取り ---- */
     /* 中継サーバーのURL。APIキーはここには入りません（中継サーバー側が持ちます）。
