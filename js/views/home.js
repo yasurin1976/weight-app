@@ -144,7 +144,8 @@ App.Home = (function () {
     if (!el) { return; }
     if (!scale) { el.style.width = '0%'; el.style.left = '50%'; return; }
     var w = Math.min(50, Math.abs(v) / scale * 50);
-    el.className = (v >= 0) ? 'save' : 'debt';
+    /* ＋（食べすぎ）は右へ赤、−（抑えた分）は左へ緑 */
+    el.className = (v > 0) ? 'debt' : 'save';
     if (v >= 0) { el.style.left = '50%'; }
     else        { el.style.left = (50 - w) + '%'; }
     el.style.width = w + '%';

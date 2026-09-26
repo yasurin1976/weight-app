@@ -159,7 +159,7 @@ App.Basket = (function () {
     }
     var after = a.remaining - total;
     el.textContent = '登録すると残り ' + LB.signed(after) + ' kcal になります';
-    LB.applyTone(el, after);
+    LB.applyToneRemaining(el, after);
   }
 
   /* ---------- 操作 ---------- */

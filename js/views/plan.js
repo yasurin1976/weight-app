@@ -149,7 +149,7 @@ App.Plan = (function () {
     /* 7日累積は「今日の乖離が確定したら」どうなるかで見る */
     var cum = C.cumulativeDeviation(today, settings, data, 7);
     var todayDevNow = a.deviation;                    /* いまの時点の今日の乖離 */
-    var todayDevAfter = C.round(a.allowance - (a.intake.kcal + kcal), 0);
+    var todayDevAfter = C.round((a.intake.kcal + kcal) - a.allowance, 0);   /* 食べすぎ＝＋ */
     var base = (cum.total === null ? 0 : cum.total) - (todayDevNow === null ? 0 : todayDevNow);
     var cumAfter = C.round(base + todayDevAfter, 0);
 
@@ -184,7 +184,7 @@ App.Plan = (function () {
           + '<span class="sim-kcal">' + kcal.toLocaleString('ja-JP') + ' kcal</span></div>';
     html += '<div class="sim-row"><span>食べた後の残り</span><b class="' + (over ? 'bad' : 'good') + '">'
           + LB.signed(r.afterRemaining) + ' kcal</b></div>';
-    html += '<div class="sim-row"><span>7日累積</span><b class="' + (r.cumAfter >= 0 ? 'good' : 'bad') + '">'
+    html += '<div class="sim-row"><span>7日累積</span><b class="' + (r.cumAfter > 0 ? 'bad' : 'good') + '">'
           + LB.signedUnit(r.cumAfter) + '</b></div>';
     if (over && r.offsetMin) {
       html += '<div class="sim-note">歩行・トレッドミル約' + r.offsetMin + '分で相殺できます</div>';

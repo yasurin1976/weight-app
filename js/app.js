@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.10.0 (トレッドミル読み取り)';
+App.VERSION = '2.11.0 (食べすぎ＝＋に統一)';
 
 (function () {
   'use strict';

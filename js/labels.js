@@ -53,9 +53,9 @@ App.Labels = (function () {
   };
 
   /* 符号に応じて呼び方を返す。
-     v > 0 なら余っている側、v < 0 なら超えている側。 */
+     v > 0 なら食べすぎ（超えている側）、v < 0 なら抑えた側。2.11.0 で反転。 */
   function forValue(v) {
-    return (v >= 0) ? L.surplus : L.deficit;
+    return (v > 0) ? L.deficit : L.surplus;
   }
 
   /* 「＋1,240 kcal 貯金」のような文字列を作る */
@@ -76,11 +76,12 @@ App.Labels = (function () {
     return signed(v) + ' ' + L.deviationUnit;
   }
 
-  /* 色分け用のクラス名。超過は赤、余裕は緑、ちょうどは色なし。 */
+  /* 色分け用のクラス名。＋（食べすぎ）は赤、−（抑えた分）は緑、ちょうどは色なし。
+     ※ 乖離用。「残り」のように＋が良い値には applyToneRemaining を使う。 */
   function toneOf(v) {
     if (typeof v !== 'number' || !isFinite(v)) { return ''; }
-    if (v < 0) { return 'val-over'; }
-    if (v > 0) { return 'val-under'; }
+    if (v > 0) { return 'val-over'; }
+    if (v < 0) { return 'val-under'; }
     return '';
   }
 
@@ -92,6 +93,13 @@ App.Labels = (function () {
     if (t) { el.classList.add(t); }
   }
 
+  /* 「残り」用。マイナス（足が出た）が赤、プラスは色なし */
+  function applyToneRemaining(el, v) {
+    if (!el) { return; }
+    el.classList.remove('val-over', 'val-under');
+    if (typeof v === 'number' && isFinite(v) && v < 0) { el.classList.add('val-over'); }
+  }
+
   return {
     L:              L,
     forValue:       forValue,
@@ -99,6 +107,7 @@ App.Labels = (function () {
     signedUnit:     signedUnit,
     signedWithWord: signedWithWord,
     toneOf:         toneOf,
-    applyTone:      applyTone
+    applyTone:      applyTone,
+    applyToneRemaining: applyToneRemaining
   };
 })();

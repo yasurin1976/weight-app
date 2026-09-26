@@ -30,7 +30,7 @@ App.Calc = (function () {
             ・乖離＝許容量−摂取、7日累積乖離
             ・実測体重からの目安補正の提案（適用はユーザー承認）
             ※Phase 1 の計算関数は変更していません。上に層を足しただけです。 */
-  var VERSION = 'calc-2.2.0';
+  var VERSION = 'calc-2.3.0';   /* 2.11.0：乖離の符号を反転（食べすぎ＝＋） */
 
   /* 計算に使う固定値 */
   var CONST = {
@@ -876,7 +876,8 @@ App.Calc = (function () {
       intake:     intake,
       hasIntake:  hasIntake,
       remaining:  (isNum(allowance) ? round(allowance - intake.kcal, 0) : null),
-      deviation:  (isNum(allowance) && hasIntake) ? round(allowance - intake.kcal, 0) : null,
+      /* 乖離 = 摂取 − 許容。食べすぎが＋、抑えた分が−（2.11.0 で符号を反転） */
+      deviation:  (isNum(allowance) && hasIntake) ? round(intake.kcal - allowance, 0) : null,
       isEstimate: true,
       calculationVersion: VERSION
     };
@@ -885,7 +886,8 @@ App.Calc = (function () {
   /* ---------- 7日累積乖離 ---------- */
 
   /* 食事の記録がある日だけを数えます。
-     記録し忘れた日を「食べなかった日」として貯金に数えないためです。 */
+     記録し忘れた日を「食べなかった日」として抑えた分に数えないためです。
+     合計は 食べすぎ＝＋／抑えた分＝− です。 */
   function cumulativeDeviation(endDate, settings, data, days) {
     var n = days || 7;
     var end = endDate || todayStr();
@@ -918,9 +920,9 @@ App.Calc = (function () {
       byDay:       byDay,
       total:       withData > 0 ? round(sum, 0) : null,
       targetTotal: round(deficitPerDay * n, 0),
-      /* 達成率は補助表示。実際の赤字 ÷ 目標赤字 */
+      /* 達成率は補助表示。実際の赤字 ÷ 目標赤字（sum は食べすぎが＋なので引く） */
       achievement: (withData > 0 && deficitPerDay > 0)
-        ? round(((deficitPerDay * withData) + sum) / (deficitPerDay * withData) * 100, 0)
+        ? round(((deficitPerDay * withData) - sum) / (deficitPerDay * withData) * 100, 0)
         : null,
       calculationVersion: VERSION
     };
@@ -980,7 +982,7 @@ App.Calc = (function () {
     /* 目標どおりなら、この期間で落ちるはずだった量 */
     var deficitPerDay = effectiveDeficit(settings, data, end);
     var plannedKcal = deficitPerDay * cum.withData;
-    var actualDeficitKcal = plannedKcal + cum.total;       /* 貯金ぶん上積み／借金ぶん目減り */
+    var actualDeficitKcal = plannedKcal - cum.total;       /* 抑えた分（−）は上積み、食べすぎ（＋）は目減り */
     var theoreticalDeltaKg = -actualDeficitKcal / CONST.KCAL_PER_KG_FAT;
     var actualDeltaKg = round(curr.average - prev.average, 2);
 

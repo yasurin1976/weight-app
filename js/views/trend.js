@@ -82,8 +82,8 @@ App.Trend = (function () {
   }
 
   /* 日別の棒。0を中央にして、余った日は上・超えた日は下に伸ばす。
-     上が食べすぎ（超過）、下が抑えた分。体重が増える方向を上にして、
-     体重グラフと同じ感覚で読めるようにしている。長期グラフも同じ向き。 */
+     乖離は 食べすぎ＝＋／抑えた分＝−（calc-2.3.0）。＋を上に描くので、
+     食べすぎた日が上（赤）、抑えた日が下（緑）になる。長期グラフも同じ。 */
   function renderWeekBars(cum) {
     var bars = $('wk-bars');
     var days = $('wk-days');
@@ -114,7 +114,7 @@ App.Trend = (function () {
         b.title = d.date + '　' + LB.signedUnit(v);
         /* 食べすぎ（マイナス）は体重が増える方向＝上へ、
            抑えた分（プラス）は下へ。体重の増減と同じ向きに揃える。 */
-        if (v < 0) { b.className = 'b debt'; up.appendChild(b); }
+        if (v > 0) { b.className = 'b debt'; up.appendChild(b); }
         else       { b.className = 'b save'; dn.appendChild(b); }
       } else {
         /* 記録がない日は、中央に薄い印だけ置く */
@@ -248,11 +248,7 @@ App.Trend = (function () {
     if (charts[canvasId]) { charts[canvasId].destroy(); }
     var options = baseOptions(unit);
     /* reverseY：縦軸を上下逆にする。数値の符号はそのまま（−が上に来る） */
-    if (extra && extra.reverseY) {
-      options.scales.y.reverse = true;
-      /* 目盛りの「−」は消して大きさだけ出す。向きは見出しで説明している */
-      options.scales.y.ticks.callback = function (v) { return Math.abs(v).toLocaleString('ja-JP'); };
-    }
+    if (extra && extra.reverseY) { options.scales.y.reverse = true; }
     charts[canvasId] = new Chart(el.getContext('2d'), {
       type: type,
       data: { labels: labels, datasets: datasets },
@@ -313,10 +309,10 @@ App.Trend = (function () {
     cum.byDay.forEach(function (d) {
       devLabels.push(C.formatDateShort(d.date));
       devValues.push(typeof d.deviation === 'number' ? d.deviation : null);
-      devColors.push((d.deviation >= 0) ? good : bad);
+      devColors.push((d.deviation > 0) ? bad : good);
     });
 
-    setText('dev-chart-label', 'カロリー乖離（上＝食べすぎ／下＝抑えた分）');
+    setText('dev-chart-label', 'カロリー乖離（＋＝食べすぎ／−＝抑えた分）');
 
     /* 食事の記録が1日も無ければ、グラフは出さない */
     if (showChart('dev-chart-box', 'dev-chart-wait', 'chart-deviation', cum.withData > 0)) {
@@ -326,7 +322,7 @@ App.Trend = (function () {
         backgroundColor: devColors,
         borderRadius: 3,
         borderSkipped: false
-      }], ' kcal', { reverseY: true });   /* 上が超過。日別バーと同じ向き */
+      }], ' kcal');   /* ＋が上＝食べすぎが上。日別バーと同じ向き */
       setText('dev-chart-note',
         'この期間の累積 ' + LB.signedUnit(cum.total) + '　記録できた日 ' + cum.withData + '/' + rangeDays + '日');
     } else {
