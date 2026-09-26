@@ -35,6 +35,16 @@ App.Cardio = (function () {
 
   var editingId = null;
   var kcalType  = 'unknown';
+  var scan      = null;   /* AI読み取りから来たときだけ入る {model, analyzedAt, values} */
+  var scanBusy  = false;
+
+  /* 読み取り結果を入れる欄。ここに無い項目（ペースなど）は読みません */
+  var SCAN_FIELDS = [
+    { id: 'c-duration',     key: 'durationMin', label: '運動時間' },
+    { id: 'c-distance',     key: 'distanceKm',  label: '距離' },
+    { id: 'c-machine-kcal', key: 'machineKcal', label: 'マシン表示' },
+    { id: 'c-hr',           key: 'avgHr',       label: '平均心拍' }
+  ];
 
   function $(id) { return document.getElementById(id); }
 
@@ -141,6 +151,7 @@ App.Cardio = (function () {
   function open(id) {
     editingId = id || null;
     showError(null);
+    clearScan();
 
     if (App.Gym) { App.Gym.setTitle(editingId ? '有酸素を編集' : 'エニタイム'); }
 
@@ -174,8 +185,137 @@ App.Cardio = (function () {
     var del = $('btn-cardio-delete');
     if (del) { del.hidden = !editingId; }
 
+    /* 読み取りボタンは新規のときだけ。編集中に別の写真を重ねないため */
+    var entry = $('cardio-scan-entry');
+    if (entry) { entry.hidden = !!editingId; }
+
     preview();
     if (App.Gym) { App.Gym.show('cardio'); }
+  }
+
+  /* ============================================================
+     トレッドミルの画面から読み取る（2.10.0）
+     ------------------------------------------------------------
+     写真 → 中継サーバー → 読み取った値をこの入力欄に入れる → 人が確認 → 保存。
+     読み取り結果をそのまま保存することはありません。
+     ============================================================ */
+
+  function onScanPick() {
+    if (scanBusy) { return; }
+    if (!App.Vision || !App.Vision.isConfigured()) {
+      showError(['読み取りサーバーのURLが設定されていません。設定画面の「スクショ読み取り」で登録してください。']);
+      return;
+    }
+    var input = $('cardio-scan-file');
+    if (input) { input.click(); }
+  }
+
+  function setScanBusy(b) {
+    scanBusy = b;
+    var btn = $('btn-cardio-scan');
+    if (btn) { btn.disabled = b; btn.textContent = b ? '読み取り中…' : 'トレッドミルの画面を読み取る'; }
+  }
+
+  function onScanFile(e) {
+    var file = e.target && e.target.files && e.target.files[0];
+    if (!file || scanBusy) { return; }
+    showError(null);
+    setScanBusy(true);
+
+    App.Vision.readTreadmillImage(file).then(function (result) {
+      setScanBusy(false);
+      if ($('cardio-scan-file')) { $('cardio-scan-file').value = ''; }
+      fillFromScan(result);
+    }).catch(function (err) {
+      setScanBusy(false);
+      if ($('cardio-scan-file')) { $('cardio-scan-file').value = ''; }
+      var msg = (err && err.message) ? err.message : '読み取りに失敗しました。';
+      if (err && err.notes) { msg += '（' + err.notes + '）'; }
+      showError([msg + ' 下の欄に手で入力することもできます。']);
+    });
+  }
+
+  /* 読み取った値を欄に入れるだけ。保存はしない */
+  function fillFromScan(result) {
+    editingId = null;
+    scan = {
+      model:      result.model || null,
+      analyzedAt: result.analyzedAt || new Date().toISOString(),
+      values:     {}
+    };
+
+    var f = result.fields || {};
+    var read = [], missing = [];
+
+    setExercise('トレッドミル');
+    if ($('c-date')) { $('c-date').value = C.todayStr(); }
+
+    SCAN_FIELDS.forEach(function (fd) {
+      var el = $(fd.id);
+      if (!el) { return; }
+      var v = f[fd.key];
+      if (typeof v === 'number' && isFinite(v)) {
+        el.value = String(v);
+        el.classList.add('is-ai');
+        scan.values[fd.key] = v;
+        read.push(fd.label);
+      } else {
+        el.value = '';
+        el.classList.remove('is-ai');
+        missing.push(fd.label);
+      }
+    });
+
+    renderScanBanner(missing, result.rounded || []);
+
+    if (App.Gym) { App.Gym.setTitle('読み取り結果の確認'); }
+    var save = $('btn-cardio-save');
+    if (save) { save.textContent = '確認して保存する'; }
+
+    preview();
+    window.scrollTo(0, 0);
+  }
+
+  function scanLabel(key) {
+    var i;
+    for (i = 0; i < SCAN_FIELDS.length; i++) { if (SCAN_FIELDS[i].key === key) { return SCAN_FIELDS[i].label; } }
+    return key;
+  }
+
+  function renderScanBanner(missing, rounded) {
+    var box = $('cardio-scan-note');
+    if (!box) { return; }
+    box.hidden = false;
+    var lines = [];
+    lines.push('<p class="scan-note-head">AIが読み取りました。数値を確認してください。</p>');
+    lines.push('<p class="scan-note-sub">色のついた欄が読み取り結果です。日付は今日を入れています。違えば直してください。</p>');
+    if (rounded.length) {
+      var r = rounded.map(function (x) { return scanLabel(x.key) + ' ' + x.from + ' → ' + x.to; });
+      lines.push('<p class="scan-note-warn">入力できる細かさに合わせて丸めました：' + r.join('、') + '</p>');
+    }
+    if (missing.length) {
+      lines.push('<p class="scan-note-warn">読み取れなかった項目は空欄のままです：' + missing.join('・') + '</p>');
+    }
+    box.innerHTML = lines.join('');
+  }
+
+  function clearScan() {
+    scan = null;
+    var box = $('cardio-scan-note');
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    SCAN_FIELDS.forEach(function (fd) { var el = $(fd.id); if (el) { el.classList.remove('is-ai'); } });
+    var save = $('btn-cardio-save');
+    if (save) { save.textContent = '保存する'; }
+    setScanBusy(false);
+  }
+
+  function wasEdited(values) {
+    if (!scan) { return false; }
+    var k;
+    for (k in scan.values) {
+      if (Object.prototype.hasOwnProperty.call(scan.values, k) && values[k] !== scan.values[k]) { return true; }
+    }
+    return false;
   }
 
   function highlightChip(name) {
@@ -260,10 +400,18 @@ App.Cardio = (function () {
     var entry = r.values;
     if (editingId) { entry.id = editingId; }
 
+    /* どうやって入力したかを残す。画像そのものは保存しない */
+    if (scan) {
+      entry.input = S.inputMeta('screenshot', {
+        model: scan.model, analyzedAt: scan.analyzedAt, sourceRef: null, edited: wasEdited(r.values)
+      });
+    }
+
     var res = S.saveCardio(entry);
     if (!res.ok) { showError([res.error]); return; }
 
     editingId = null;
+    clearScan();
     afterChange();
   }
 
@@ -278,6 +426,7 @@ App.Cardio = (function () {
 
   function onCancel() {
     editingId = null;
+    clearScan();
     showError(null);
     if (App.showScreen) { App.showScreen('record'); }
   }
@@ -324,6 +473,11 @@ App.Cardio = (function () {
     var del = $('btn-cardio-delete');
     if (del) { del.addEventListener('click', onDelete); }
 
+    var scanBtn = $('btn-cardio-scan');
+    if (scanBtn) { scanBtn.addEventListener('click', onScanPick); }
+    var scanFile = $('cardio-scan-file');
+    if (scanFile) { scanFile.addEventListener('change', onScanFile); }
+
     var cancel = $('btn-cardio-cancel');
     if (cancel) { cancel.addEventListener('click', onCancel); }
   }
@@ -331,6 +485,7 @@ App.Cardio = (function () {
   return {
     init: init,
     open: open,
+    fillFromScan: fillFromScan,
     METS_PRESET: METS_PRESET
   };
 })();

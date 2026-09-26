@@ -561,6 +561,14 @@
 
     <div id="gym-cardio" hidden>
 
+    <!-- 2.10.0：トレッドミルの画面を写真から読み取る -->
+    <div class="card scan-entry" id="cardio-scan-entry">
+      <button type="button" class="btn btn-primary" id="btn-cardio-scan">トレッドミルの画面を読み取る</button>
+      <p class="field-help" id="cardio-scan-help">終了画面か一時停止画面を撮った写真を選びます。読み取り後は下の欄に入るので、確認してから保存してください。</p>
+      <input type="file" id="cardio-scan-file" accept="image/*" hidden>
+    </div>
+    <div class="card scan-note" id="cardio-scan-note" hidden></div>
+
     <form id="cardio-form" novalidate>
 
       <div class="field">
@@ -725,7 +733,7 @@
     <button type="button" class="btn btn-primary" id="btn-plan-eat" hidden>これを食べる（記録する）</button>
     <button type="button" class="btn" id="btn-plan-close">ホームに戻る</button>
 
-    <p class="note">運動した分は許容量に加算しています。マシン表示のカロリーは設定の運動係数で割り引いています。</p>
+    <p class="note">運動した分は許容量に加算しています。マシン表示のカロリーはそのまま（運動係数1.00）加算します。割り引きたい場合は設定の運動係数で変えられます。</p>
 
   </section>
 
@@ -745,7 +753,7 @@
       </div>
 
       <div class="card">
-        <div class="card-label">日別</div>
+        <div class="card-label">日別　<span class="dim">上＝食べすぎ／下＝抑えた分</span></div>
         <div class="week" id="wk-bars"></div>
         <div class="weekmid"></div>
         <div class="week week-days" id="wk-days"></div>
@@ -924,7 +932,7 @@
         <div class="field">
           <label for="f-cardio-factor">運動係数</label>
           <input type="number" id="f-cardio-factor" inputmode="decimal" step="0.05" min="0.3" max="1">
-          <p class="field-help">マシン表示のカロリーに掛ける値です。初期値0.70。<strong>これは本来は別々の2つの補正をまとめたものです。</strong>（1）マシンは表示が多めに出るという機器誤差の補正、（2）表示に含まれる安静時代謝ぶんの差し引き。理論上は別ものですが、運用を簡単にするため1つにまとめています。</p>
+          <p class="field-help">マシン表示のカロリーに掛ける値です。初期値1.00（表示どおり加算）。マシンの表示が多めに出ると感じる場合は0.70〜0.90に下げてください。</p>
         </div>
 
         <div class="field">

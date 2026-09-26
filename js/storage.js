@@ -115,7 +115,7 @@ App.Storage = (function () {
     /* ---- Phase 2 で追加 ---- */
     intensity:          'normal',    // 減量強度 light / normal / hard
     baseTargetKcal:     null,        // 基本摂取目安。null なら自動計算
-    cardioFactor:       0.70,        // 運動係数（機器誤差の補正と安静分の差し引きを兼ねる）
+    cardioFactor:       1.00,        // 運動係数。1.00＝マシン表示をそのまま使う（2.9.0で0.70から変更）
     lastCalibrationAt:  null,        // 最後に目安を見直した日時
 
     /* ---- 2.3.0 で追加：表示テーマ ---- */
@@ -611,7 +611,7 @@ App.Storage = (function () {
     if (s && typeof s === 'object') {
       if (s.intensity === undefined)         { s.intensity = 'normal'; }
       if (s.baseTargetKcal === undefined)    { s.baseTargetKcal = null; }
-      if (s.cardioFactor === undefined)      { s.cardioFactor = 0.70; }
+      if (s.cardioFactor === undefined)      { s.cardioFactor = 1.00; }
       if (s.lastCalibrationAt === undefined) { s.lastCalibrationAt = null; }
       set(KEYS.settings, s);
     }
@@ -623,11 +623,29 @@ App.Storage = (function () {
     return true;
   }
 
+  /* 運動係数の初期値を 0.70 → 1.00 に変えたときの一度きりの引き継ぎ。
+     0.70 のまま残っている設定は、旧初期値のままの可能性が高いので 1.00 にします。
+     それ以外の値（自分で変えた値）は触りません。二度は行いません。 */
+  function migrateCardioFactor() {
+    var meta = getMeta();
+    if (meta.cardioFactorTo100) { return false; }
+    var s = get(KEYS.settings, null);
+    if (s && typeof s === 'object' && s.cardioFactor === 0.70) {
+      s.cardioFactor = 1.00;
+      set(KEYS.settings, s);
+    }
+    meta.cardioFactorTo100 = new Date().toISOString();
+    set(KEYS.meta, meta);
+    return true;
+  }
+
   /* 起動時に呼びます */
   function ensureMigrated() {
     var meta = getMeta();
     var v = (typeof meta.schemaVersion === 'number') ? meta.schemaVersion : 1;
-    return migrate(v);
+    var r = migrate(v);
+    migrateCardioFactor();
+    return r;
   }
 
   /* ---------- JSON バックアップ ---------- */

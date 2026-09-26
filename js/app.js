@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.8.0 (まとめて記録)';
+App.VERSION = '2.10.0 (トレッドミル読み取り)';
 
 (function () {
   'use strict';

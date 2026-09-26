@@ -81,6 +81,9 @@ App.Trend = (function () {
     return h + '時間' + (m ? m + '分' : '');
   }
 
+  /* 日別の棒。0を中央にして、余った日は上・超えた日は下に伸ばす。
+     上が食べすぎ（超過）、下が抑えた分。体重が増える方向を上にして、
+     体重グラフと同じ感覚で読めるようにしている。長期グラフも同じ向き。 */
   function renderWeekBars(cum) {
     var bars = $('wk-bars');
     var days = $('wk-days');
@@ -96,19 +99,33 @@ App.Trend = (function () {
 
     cum.byDay.forEach(function (d) {
       var cell = document.createElement('div');
-      if (typeof d.deviation === 'number') {
-        var h = Math.round(Math.abs(d.deviation) / max * 46);
+      cell.className = 'wk-cell';
+
+      var up = document.createElement('div');
+      up.className = 'wk-up';
+      var dn = document.createElement('div');
+      dn.className = 'wk-dn';
+
+      var v = d.deviation;
+      if (typeof v === 'number') {
+        var h = Math.max(Math.round(Math.abs(v) / max * 42), 3);
         var b = document.createElement('span');
-        b.className = 'b ' + (d.deviation >= 0 ? 'save' : 'debt');
-        b.style.height = Math.max(h, 3) + 'px';
-        b.title = d.date + '　' + LB.signedUnit(d.deviation);
-        cell.appendChild(b);
+        b.style.height = h + 'px';
+        b.title = d.date + '　' + LB.signedUnit(v);
+        /* 食べすぎ（マイナス）は体重が増える方向＝上へ、
+           抑えた分（プラス）は下へ。体重の増減と同じ向きに揃える。 */
+        if (v < 0) { b.className = 'b debt'; up.appendChild(b); }
+        else       { b.className = 'b save'; dn.appendChild(b); }
       } else {
+        /* 記録がない日は、中央に薄い印だけ置く */
         var none = document.createElement('span');
         none.className = 'b none';
         none.style.height = '3px';
-        cell.appendChild(none);
+        up.appendChild(none);
       }
+
+      cell.appendChild(up);
+      cell.appendChild(dn);
       bars.appendChild(cell);
 
       var lab = document.createElement('div');
@@ -119,8 +136,6 @@ App.Trend = (function () {
       days.appendChild(lab);
     });
   }
-
-  /* ---------- 実測との答え合わせと補正提案 ---------- */
 
   function renderCalibration(settings, data, today) {
     var box = $('wk-calib-body');
@@ -227,14 +242,21 @@ App.Trend = (function () {
     };
   }
 
-  function draw(canvasId, type, labels, datasets, unit) {
+  function draw(canvasId, type, labels, datasets, unit, extra) {
     var el = $(canvasId);
     if (!el || typeof Chart === 'undefined') { return; }
     if (charts[canvasId]) { charts[canvasId].destroy(); }
+    var options = baseOptions(unit);
+    /* reverseY：縦軸を上下逆にする。数値の符号はそのまま（−が上に来る） */
+    if (extra && extra.reverseY) {
+      options.scales.y.reverse = true;
+      /* 目盛りの「−」は消して大きさだけ出す。向きは見出しで説明している */
+      options.scales.y.ticks.callback = function (v) { return Math.abs(v).toLocaleString('ja-JP'); };
+    }
     charts[canvasId] = new Chart(el.getContext('2d'), {
       type: type,
       data: { labels: labels, datasets: datasets },
-      options: baseOptions(unit)
+      options: options
     });
   }
 
@@ -294,7 +316,7 @@ App.Trend = (function () {
       devColors.push((d.deviation >= 0) ? good : bad);
     });
 
-    setText('dev-chart-label', 'カロリー乖離（許容 − 摂取）');
+    setText('dev-chart-label', 'カロリー乖離（上＝食べすぎ／下＝抑えた分）');
 
     /* 食事の記録が1日も無ければ、グラフは出さない */
     if (showChart('dev-chart-box', 'dev-chart-wait', 'chart-deviation', cum.withData > 0)) {
@@ -304,7 +326,7 @@ App.Trend = (function () {
         backgroundColor: devColors,
         borderRadius: 3,
         borderSkipped: false
-      }], ' kcal');
+      }], ' kcal', { reverseY: true });   /* 上が超過。日別バーと同じ向き */
       setText('dev-chart-note',
         'この期間の累積 ' + LB.signedUnit(cum.total) + '　記録できた日 ' + cum.withData + '/' + rangeDays + '日');
     } else {

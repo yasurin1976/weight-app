@@ -262,10 +262,93 @@ App.Vision = (function () {
     });
   }
 
+  /* ============================================================
+     トレッドミルの結果画面（2.10.0）
+     ------------------------------------------------------------
+     読み取るのは 経過時間・距離・カロリー・平均心拍 の4つ。
+     経過時間は秒で返ってくるので、有酸素の入力欄（1分単位）に
+     合わせて四捨五入します。丸めたことは確認画面で知らせます。
+     日付は画面に無いので、ここでは触りません（入力画面が今日を入れます）。
+     ============================================================ */
+
+  var RANGES_TREADMILL = {
+    distanceKm:  [0,  100,  0.01],
+    machineKcal: [0,  3000, 1],
+    avgHr:       [30, 230,  1]
+  };
+
+  function cleanTreadmill(fields) {
+    var out = {};
+    var dropped = [];
+    var rounded = [];
+    var f = fields || {};
+
+    /* 中継サーバーの kcal → 入力画面の machineKcal に名前を合わせる */
+    var src = { distanceKm: f.distanceKm, machineKcal: f.kcal, avgHr: f.avgHr };
+    var key, v, n, r, snapped;
+    for (key in RANGES_TREADMILL) {
+      if (!Object.prototype.hasOwnProperty.call(RANGES_TREADMILL, key)) { continue; }
+      v = src[key];
+      if (v === null || v === undefined || v === '') { out[key] = null; continue; }
+      n = Number(v);
+      r = RANGES_TREADMILL[key];
+      if (!isFinite(n) || n < r[0] || n > r[1]) { out[key] = null; dropped.push(key); continue; }
+      snapped = App.Calc.snapToStep(n, r[2]);
+      if (Math.abs(snapped - n) > 1e-6) { rounded.push({ key: key, from: n, to: snapped }); }
+      out[key] = snapped;
+    }
+
+    /* 経過時間（秒）→ 分。30秒以上は切り上げ */
+    var sec = Number(f.elapsed);
+    if (isFinite(sec) && sec >= 60 && sec <= 300 * 60) {
+      out.durationMin = Math.round(sec / 60);
+      out.elapsedSec  = sec;
+      if (sec % 60 !== 0) {
+        rounded.push({ key: 'durationMin', from: secToLabel(sec), to: out.durationMin + '分' });
+      }
+    } else {
+      out.durationMin = null;
+      out.elapsedSec  = null;
+      if (f.elapsed !== null && f.elapsed !== undefined) { dropped.push('durationMin'); }
+    }
+
+    return { fields: out, dropped: dropped, rounded: rounded };
+  }
+
+  function secToLabel(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + ('0' + s).slice(-2);
+  }
+
+  function readTreadmillImage(file) {
+    return toSmallJpeg(file).then(function (img) {
+      return post({ imageBase64: img.base64, mimeType: img.mimeType, kind: 'treadmill' });
+    }).then(function (body) {
+      var c = cleanTreadmill(body.fields);
+
+      if (c.fields.durationMin === null) {
+        var e = new Error('経過時間を読み取れませんでした。数値がはっきり写るように撮り直すか、手入力してください。');
+        e.notes = body.notes || null;
+        throw e;
+      }
+
+      return {
+        fields:  c.fields,
+        dropped: c.dropped,
+        rounded: c.rounded,
+        notes:   body.notes || null,
+        model:   body.model || null,
+        analyzedAt: body.analyzedAt || new Date().toISOString()
+      };
+    });
+  }
+
   return {
     isConfigured:  isConfigured,
     relayUrl:      relayUrl,
     readBodyImage: readBodyImage,
+    readTreadmillImage: readTreadmillImage,
+    _cleanTreadmill: cleanTreadmill,
     /* テスト用に内部処理も出しておく */
     _clean:        clean,
     _toSmallJpeg:  toSmallJpeg

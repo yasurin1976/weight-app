@@ -743,25 +743,47 @@ html,body{
 }
 
 /* 週の棒グラフ */
+/* 日別の棒。0を中央に置き、余った日は上・超えた日は下へ伸ばす。
+   長期グラフと向きを揃えるため（2.8.1）。 */
 .week{
-  display: flex; align-items: flex-end; gap: 6px;
-  height: 100px; padding: 4px 2px 0;
+  position: relative;
+  display: flex; gap: 6px;
+  height: 100px; padding: 4px 2px;
 }
-.week > div{
-  flex: 1; display: flex; flex-direction: column;
-  justify-content: flex-end; height: 100%;
-}
-.week .b{ border-radius: 3px 3px 0 0; display: block; width: 100%; }
+.week > div{ flex: 1; height: 100%; }
+.wk-cell{ display: flex; flex-direction: column; }
+/* 上半分は下端から上へ伸びる */
+.wk-up{ flex: 1; display: flex; align-items: flex-end; }
+/* 下半分は上端から下へ伸びる */
+.wk-dn{ flex: 1; display: flex; align-items: flex-start; }
+.week .b{ display: block; width: 100%; }
+.wk-up .b{ border-radius: 3px 3px 0 0; }
+.wk-dn .b{ border-radius: 0 0 3px 3px; }
 .week .b.save{ background: var(--good, #17794f); }
 .week .b.debt{ background: var(--bad, #b3341f); }
 .week .b.none{ background: var(--border); }
-.week.week-days{ height: auto; padding-top: 4px; }
+.week.week-days{ height: auto; padding-top: 4px; display: flex; }
+.week.week-days > div{ height: auto; }
 .week .d{
   font-size: 10.5px; color: var(--text-sub);
   text-align: center; display: block;
   font-variant-numeric: tabular-nums;
 }
-.weekmid{ height: 1px; background: var(--border); margin: 0 2px; }
+/* 0の線。棒グラフの高さのちょうど中央に重ねる */
+.weekmid{
+  position: relative;
+  height: 0;
+  margin: 0;
+}
+.weekmid::before{
+  content: '';
+  position: absolute;
+  left: 2px; right: 2px;
+  bottom: 50px;                 /* .week の高さ100px の半分 */
+  height: 1px;
+  background: var(--text-sub);
+  opacity: .7;
+}
 
 /* 食べる前の判断 */
 .sim{
@@ -1099,3 +1121,11 @@ input.is-ai{
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
+
+/* 2.9.0：グラフの向きの説明（見出しの横に小さく） */
+.card-label .dim{ font-weight: 400; color: var(--text-sub); text-transform: none; letter-spacing: 0; }
+
+/* 2.10.0：有酸素タブの読み取りボタン */
+.scan-entry{ text-align: center; }
+.scan-entry .btn{ width: 100%; }
+.scan-entry .field-help{ margin: 8px 0 0; }
