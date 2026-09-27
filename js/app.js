@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.12.1 (超過時は「今日の食べすぎ ＋N」)';
+App.VERSION = '2.12.2 (筋トレの推定消費を表示)';
 
 (function () {
   'use strict';

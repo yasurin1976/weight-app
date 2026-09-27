@@ -118,6 +118,8 @@ App.History = (function () {
         if (e.reps && e.reps.length) {
           parts.push(App.Strength.repsText(e.reps) + '回（計' + e.totalReps + '）');
         }
+        var k = C.strengthEntryKcal(e, S.getSettings(), { body: S.listBody() });
+        if (typeof k === 'number') { parts.push('推定 ' + k + 'kcal'); }
         return parts.join('　');
       },
       /* 時間は手入力ではなく推定値なので、一覧にはセット数を出す */
@@ -270,6 +272,22 @@ App.History = (function () {
         var sum = el('div', 'day-sum');
         sum.textContent = '合計 ' + t.kcal + 'kcal　P ' + t.protein + '　F ' + t.fat + '　C ' + t.carb;
         list.appendChild(sum);
+      }
+
+      /* 筋トレの推定消費の合計。セット数と回数から時間を推定した粗い目安 */
+      if (sec.key === 'strength') {
+        var settings = S.getSettings(), body = S.listBody();
+        var ks = 0, kn = 0, mins = 0;
+        items.forEach(function (e) {
+          var k = C.strengthEntryKcal(e, settings, { body: body });
+          if (typeof k === 'number') { ks += k; kn++; }
+          if (typeof e.durationMin === 'number') { mins += e.durationMin; }
+        });
+        var ssum = el('div', 'day-sum');
+        ssum.textContent = kn
+          ? '推定消費 合計 ' + ks + 'kcal（約' + mins + '分・セット数と回数からの推定）'
+          : '推定消費 --（体重の記録が必要です）';
+        list.appendChild(ssum);
       }
     });
 

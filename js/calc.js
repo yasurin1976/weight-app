@@ -664,6 +664,18 @@ App.Calc = (function () {
     };
   }
 
+  /* 筋トレ1件ぶんの推定消費（一覧表示用）。
+     exerciseAddonForDate と同じ式。所要時間はセット数と回数からの推定なので粗い目安。 */
+  function strengthEntryKcal(entry, settings, data) {
+    if (!entry || !isNum(entry.durationMin)) { return null; }
+    var s = settings || {};
+    var weightKg = weightForDate((data || {}).body, entry.date || todayStr());
+    if (!isNum(weightKg)) { return null; }
+    var mets = isNum(entry.mets) ? entry.mets : (isNum(s.strengthMets) ? s.strengthMets : 5.0);
+    var k = strengthKcal({ durationMin: entry.durationMin, weightKg: weightKg, mets: mets });
+    return isNum(k) ? round(k, 0) : null;
+  }
+
   /* ---------- 基本摂取目安 ---------- */
 
   /* 運動を除いた維持カロリーを推定する。
@@ -1122,6 +1134,7 @@ App.Calc = (function () {
     baseTargetKcal:         baseTargetKcal,
     allowanceForDate:       allowanceForDate,
     cumulativeDeviation:    cumulativeDeviation,
+    strengthEntryKcal:      strengthEntryKcal,
     toExerciseMinutes:      toExerciseMinutes,
     toFatKg:                toFatKg,
     calibrationProposal:    calibrationProposal,
