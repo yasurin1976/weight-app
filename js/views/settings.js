@@ -35,6 +35,7 @@ App.Settings = (function () {
   ];
 
   var intensity = 'normal';
+  var sex = 'male';
 
   function $(id) { return document.getElementById(id); }
 
@@ -52,9 +53,24 @@ App.Settings = (function () {
         el.value = (v === null || v === undefined) ? '' : String(v);
       }
     });
+    setSex(s.sex);
     setIntensity(s.intensity || 'normal');
     applyTheme(s.theme || 'auto');
     updateAgeDisplay();
+  }
+
+  /* ---------- 性別 ----------
+     基礎代謝（Mifflin式）の定数が男女で違う。男性 +5／女性 −161。
+     変えたらその場で基本摂取目安の試算を出し直す。 */
+  function setSex(v) {
+    sex = (v === 'female') ? 'female' : 'male';
+    var g = $('f-sex-group');
+    if (g) {
+      Array.prototype.forEach.call(g.querySelectorAll('.seg-btn'), function (b) {
+        b.classList.toggle('is-on', b.getAttribute('data-sex') === sex);
+      });
+    }
+    if (typeof renderBaseTarget === 'function') { renderBaseTarget(); }
   }
 
   /* ---------- 減量の強度 ---------- */
@@ -119,6 +135,7 @@ App.Settings = (function () {
 
     var s = S.getSettings();
     s.intensity = intensity;   /* 選択中の強度で試算する */
+    s.sex = sex;               /* 選択中の性別で試算する */
     /* 画面で編集中の目標日も反映する（保存前でも結果が見えるように） */
     if ($('f-target-date')) {
       var td = $('f-target-date').value.trim();
@@ -236,8 +253,8 @@ App.Settings = (function () {
       out[f.key] = n;
     });
 
-    /* 性別は男性固定（Step 1 の確定仕様） */
-    out.sex = 'male';
+    /* 性別（2.16.0 で選べるようにした。以前は男性固定） */
+    out.sex = sex;
     out.intensity = intensity;
 
     return { values: out, errors: errors };
@@ -461,6 +478,17 @@ App.Settings = (function () {
             setTheme(t.getAttribute('data-theme'));
             return;
           }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    var sg = $('f-sex-group');
+    if (sg) {
+      sg.addEventListener('click', function (ev) {
+        var t = ev.target;
+        while (t && t !== sg) {
+          if (t.getAttribute && t.getAttribute('data-sex')) { setSex(t.getAttribute('data-sex')); return; }
           t = t.parentNode;
         }
       });

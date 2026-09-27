@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.15.0 (デザインA トラック)';
+App.VERSION = '2.16.0 (性別を選べるように)';
 
 (function () {
   'use strict';

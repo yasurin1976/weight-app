@@ -98,7 +98,7 @@ App.Storage = (function () {
   /* 初期値。Step 1 で確定した内容 */
   var DEFAULT_SETTINGS = {
     birthdate:          null,         // 生年月日（未入力。初回に設定画面で入力する）
-    sex:                'male',       // 性別（男性固定）
+    sex:                'male',       // 性別 male / female（2.16.0 から設定で選択）
     heightCm:           171,
     strideCm:           77,
     beta:               0.10,         // 日常活動補正
