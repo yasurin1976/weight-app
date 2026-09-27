@@ -8,19 +8,19 @@
 
 var App = App || {};
 
-App.VERSION = '2.11.0 (食べすぎ＝＋に統一)';
+App.VERSION = '2.12.1 (超過時は「今日の食べすぎ ＋N」)';
 
 (function () {
   'use strict';
 
   /* 画面の一覧。body は「記録」タブの下にある入力画面です。 */
-  var SCREENS = ['home', 'record', 'addmenu', 'plan', 'scan', 'body', 'meal', 'basket', 'myfoods', 'steps', 'gym', 'trend', 'settings'];
+  var SCREENS = ['home', 'record', 'addmenu', 'plan', 'scan', 'body', 'meal', 'basket', 'memo', 'myfoods', 'steps', 'gym', 'trend', 'settings'];
 
   /* 下部ナビのどのタブを光らせるか */
   var NAV_OF = {
     home: 'home', plan: 'home',
     record: 'record', addmenu: 'record', scan: 'record', body: 'record', meal: 'record',
-    myfoods: 'settings', basket: 'record', steps: 'record', gym: 'record',
+    myfoods: 'settings', basket: 'record', memo: 'record', steps: 'record', gym: 'record',
     trend: 'trend', settings: 'settings'
   };
 
@@ -138,6 +138,7 @@ App.VERSION = '2.11.0 (食べすぎ＝＋に統一)';
     App.Meal.init();
     App.MyFoods.init();
     App.Basket.init();
+    App.MemoImport.init();
     App.Steps.init();
     App.Strength.init();
     App.Cardio.init();

@@ -32,6 +32,7 @@ App.Labels = (function () {
     /* ---- 許容量まわり ---- */
     allowance:      '今日の許容量',
     remaining:      '今日あと食べられる',
+    overToday:      '今日の食べすぎ',   /* 許容を超えたときの見出し */
     intake:         '摂取',
     exerciseAddon:  '運動',
     baseTarget:     '基本摂取目安',

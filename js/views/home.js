@@ -65,8 +65,17 @@ App.Home = (function () {
 
   /* ---------- 今日あと食べられる量 ---------- */
 
+  /* 見出しの文字だけ差し替える（「推定」タグは残す） */
+  function setLabel(id, text) {
+    var el = $(id);
+    if (!el) { return; }
+    var tag = el.querySelector('.est-tag');
+    el.textContent = text;
+    if (tag) { el.appendChild(tag); }
+  }
+
   function renderRemaining(a) {
-    setText('home-remaining-label', LB.L.remaining);
+    setLabel('home-remaining-label', LB.L.remaining);
 
     if (a.allowance === null) {
       setText('home-remaining', '--');
@@ -75,7 +84,13 @@ App.Home = (function () {
       return;
     }
 
-    setText('home-remaining', a.remaining.toLocaleString('ja-JP'));
+    /* 超えたら見出しを「今日の食べすぎ」に変え、＋で赤く出す。
+       「あと食べられる −540」は意味が通らないため。 */
+    var over = a.remaining < 0;
+    setLabel('home-remaining-label', over ? LB.L.overToday : LB.L.remaining);
+    setText('home-remaining', over ? ('＋' + Math.abs(a.remaining).toLocaleString('ja-JP'))
+                                   : a.remaining.toLocaleString('ja-JP'));
+    LB.applyToneRemaining($('home-remaining'), a.remaining);
 
     /* 何割食べたか。超過しても100%で止めて、色で知らせる。 */
     var pct = Math.max(0, Math.min(100, Math.round(a.intake.kcal / a.allowance * 100)));

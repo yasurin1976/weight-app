@@ -158,7 +158,9 @@ App.Basket = (function () {
       return;
     }
     var after = a.remaining - total;
-    el.textContent = '登録すると残り ' + LB.signed(after) + ' kcal になります';
+    el.textContent = (after < 0)
+      ? '登録すると ' + Math.abs(after).toLocaleString('ja-JP') + ' kcal の食べすぎになります'
+      : '登録すると残り ' + after.toLocaleString('ja-JP') + ' kcal になります';
     LB.applyToneRemaining(el, after);
   }
 

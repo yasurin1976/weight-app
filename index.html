@@ -245,6 +245,44 @@
        それぞれの個数を決めて一括で登録します。
        保存されるのは従来どおり「1品＝1件」です。
        ========================================================== -->
+  <section class="screen" id="screen-memo" data-title="メモから記録" hidden>
+
+    <div id="memo-step-paste">
+      <div class="field">
+        <label for="memo-text">メモを貼り付け</label>
+        <textarea id="memo-text" rows="10" placeholder="9/26 エニタイム&#10;ラットプルダウン&#10;150LBS&#10;10+10+10回&#10;&#10;レッグプレス&#10;350LBS&#10;15回"></textarea>
+        <p class="field-help">種目名 → 重量（LBS か kg）→ 回数（10+10+10回）の順。種目の間は空行。1行目に「9/26」があれば日付にします。</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-memo-parse">読み取る</button>
+      <button type="button" class="btn" id="btn-memo-cancel">キャンセル</button>
+    </div>
+
+    <div id="memo-step-confirm" hidden>
+      <div class="field">
+        <label for="memo-date">日付 <span class="req">必須</span></label>
+        <input type="date" id="memo-date">
+        <p class="field-help" id="memo-date-note"></p>
+      </div>
+
+      <div class="card scan-note" id="memo-note" hidden></div>
+
+      <div id="memo-list"></div>
+
+      <div class="card" id="memo-unknown-box" hidden>
+        <div class="card-label">読み取れなかった行（保存されません）</div>
+        <div id="memo-unknown"></div>
+      </div>
+
+      <div id="memo-error" class="form-error" hidden></div>
+
+      <button type="button" class="btn btn-primary" id="btn-memo-save">確認して保存する</button>
+      <button type="button" class="btn" id="btn-memo-back">メモに戻る</button>
+      <button type="button" class="btn" id="btn-memo-cancel2">キャンセル</button>
+      <p class="note">1行＝1件で保存します（同じ種目でも重量が違えば別の記録）。回数が空の行は保存されません。</p>
+    </div>
+
+  </section>
+
   <section class="screen" id="screen-basket" data-title="まとめて記録" hidden>
 
     <div class="field-row">
@@ -485,6 +523,12 @@
 
     <div id="gym-strength">
 
+    <!-- 2.12.0：メモを貼り付けてまとめて記録 -->
+    <div class="card scan-entry" id="strength-memo-entry">
+      <button type="button" class="btn btn-primary" id="btn-strength-memo">メモを貼り付けて読み取る</button>
+      <p class="field-help">いつものメモ（種目名／重量／回数）をそのまま貼ると、まとめて記録できます。</p>
+    </div>
+
     <form id="strength-form" novalidate>
 
       <div class="field">
@@ -710,7 +754,7 @@
   <section class="screen" id="screen-plan" data-title="食べる前に" hidden>
 
     <div class="card card-hero">
-      <div class="card-label">残り<span class="est-tag">推定</span></div>
+      <div class="card-label"><span id="plan-remaining-label">残り</span><span class="est-tag">推定</span></div>
       <div class="big-number"><span id="plan-remaining">--</span><span class="unit">kcal</span></div>
       <div class="meta-line" id="plan-allowance-line"></div>
     </div>
@@ -1064,6 +1108,8 @@
 <script src="js/views/scan.js"></script>
 <script src="js/views/meal.js"></script>
 <script src="js/views/myfoods.js"></script>
+<script src="js/memo.js"></script>
+<script src="js/views/memoimport.js"></script>
 <script src="js/views/basket.js"></script>
 <script src="js/views/steps.js"></script>
 <script src="js/views/strength.js"></script>

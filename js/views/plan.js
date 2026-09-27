@@ -65,7 +65,11 @@ App.Plan = (function () {
       setText('plan-allowance-line', '体重を記録すると計算できます');
       return;
     }
-    setText('plan-remaining', a.remaining.toLocaleString('ja-JP'));
+    var over = a.remaining < 0;
+    setText('plan-remaining-label', over ? LB.L.overToday : '残り');
+    setText('plan-remaining', over ? ('＋' + Math.abs(a.remaining).toLocaleString('ja-JP'))
+                                   : a.remaining.toLocaleString('ja-JP'));
+    LB.applyToneRemaining($('plan-remaining'), a.remaining);
 
     var line = '許容 ' + a.allowance.toLocaleString('ja-JP')
              + '（目安 ' + a.baseTarget.toLocaleString('ja-JP');
@@ -182,8 +186,8 @@ App.Plan = (function () {
     var html = '';
     html += '<div class="sim-head">' + (picked ? escapeHtml(picked.name) : '入力した量')
           + '<span class="sim-kcal">' + kcal.toLocaleString('ja-JP') + ' kcal</span></div>';
-    html += '<div class="sim-row"><span>食べた後の残り</span><b class="' + (over ? 'bad' : 'good') + '">'
-          + LB.signed(r.afterRemaining) + ' kcal</b></div>';
+    html += '<div class="sim-row"><span>' + (over ? '食べた後の食べすぎ' : '食べた後の残り') + '</span><b class="' + (over ? 'bad' : 'good') + '">'
+          + (over ? '＋' + Math.abs(r.afterRemaining).toLocaleString('ja-JP') : r.afterRemaining.toLocaleString('ja-JP')) + ' kcal</b></div>';
     html += '<div class="sim-row"><span>7日累積</span><b class="' + (r.cumAfter > 0 ? 'bad' : 'good') + '">'
           + LB.signedUnit(r.cumAfter) + '</b></div>';
     if (over && r.offsetMin) {

@@ -1129,3 +1129,29 @@ input.is-ai{
 .scan-entry{ text-align: center; }
 .scan-entry .btn{ width: 100%; }
 .scan-entry .field-help{ margin: 8px 0 0; }
+
+/* 2.12.0：メモから記録 */
+#memo-text{ width: 100%; min-height: 200px; font-size: 16px; line-height: 1.5; }
+.memo-row{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+.memo-row.is-warn{ border-color: var(--warn-text, #b3341f); }
+.memo-ex{ font-size: 15px; font-weight: 700; }
+.memo-w{ font-size: 13px; color: var(--text-sub); }
+.memo-reps{ display: flex; align-items: center; gap: 6px; }
+.memo-reps input{ width: 120px; min-height: 40px; font-size: 16px; }
+.memo-reps .u{ font-size: 13px; color: var(--text-sub); }
+.memo-del{
+  min-width: 40px; min-height: 40px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface); color: var(--text); font-size: 18px;
+}
+.memo-warn{ grid-column: 1 / -1; font-size: 12px; color: var(--warn-text, #b3341f); }
+.memo-unknown-line{ font-size: 13px; color: var(--text-sub); padding: 3px 0; }
