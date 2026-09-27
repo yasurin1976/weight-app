@@ -114,12 +114,13 @@ App.Strength = (function () {
   }
 
   /* 表示用の換算（保存するのは元の単位のまま） */
-  function weightLabel(w, u) {
+  /* perHand（左右）のときは片手の数字で記録し、表示だけ「左右24kg（計48kg）」にする */
+  function weightLabel(w, u, perHand) {
     if (typeof w !== 'number') { return ''; }
-    if (u === 'LBS') {
-      return w + 'LBS（約' + C.round(w * LBS_TO_KG, 1) + 'kg）';
-    }
-    return w + 'kg';
+    var base = (u === 'LBS') ? (w + 'LBS（約' + C.round(w * LBS_TO_KG, 1) + 'kg）') : (w + 'kg');
+    if (!perHand) { return base; }
+    var total = (u === 'LBS') ? (w * 2) + 'LBS' : (w * 2) + 'kg';
+    return '左右' + base + '（計' + total + '）';
   }
 
   /* ---------- 画面を開く ---------- */
@@ -138,6 +139,7 @@ App.Strength = (function () {
       if ($('w-exercise')) { $('w-exercise').value = (e && e.exercise) || ''; }
       if ($('w-weight'))   { $('w-weight').value = (e && typeof e.weight === 'number') ? String(e.weight) : ''; }
       setUnit(e && e.unit);
+      if ($('w-perhand'))  { $('w-perhand').checked = !!(e && e.perHand); }
       loadReps(e && e.reps);
       if ($('w-memo'))     { $('w-memo').value = (e && e.memo) || ''; }
     } else {
@@ -145,6 +147,7 @@ App.Strength = (function () {
       if ($('w-exercise')) { $('w-exercise').value = ''; }
       if ($('w-weight'))   { $('w-weight').value = ''; }
       setUnit('kg');
+      if ($('w-perhand'))  { $('w-perhand').checked = false; }
       loadReps(null);
       if ($('w-memo'))     { $('w-memo').value = ''; }
     }
@@ -200,7 +203,7 @@ App.Strength = (function () {
       row.className = 'past-row';
       var total = (e.reps || []).reduce(function (a, b) { return a + b; }, 0);
       row.textContent = C.formatDateShort(e.date) + '　'
-        + weightLabel(e.weight, e.unit) + '　'
+        + weightLabel(e.weight, e.unit, e.perHand) + '　'
         + repsText(e.reps) + '回（計' + total + '）';
       list.appendChild(row);
     });
@@ -209,7 +212,7 @@ App.Strength = (function () {
     if (best && typeof best.weight === 'number') {
       var b = document.createElement('div');
       b.className = 'past-row past-best';
-      b.textContent = '最高重量：' + weightLabel(best.weight, best.unit)
+      b.textContent = '最高重量：' + weightLabel(best.weight, best.unit, best.perHand)
         + '（' + C.formatDateShort(best.date) + '）';
       list.appendChild(b);
     }
@@ -244,6 +247,8 @@ App.Strength = (function () {
       else if (!C.isMultipleOf(w, 0.5)) { errors.push('重量は0.5刻みで入力してください。'); }
       else { out.weight = C.snapToStep(w, 0.5); out.unit = unit; }
     }
+    /* 左右（片手ずつ）。重量が無いときは意味がないので付けない */
+    out.perHand = (out.weight !== null && $('w-perhand') && $('w-perhand').checked) ? true : false;
 
     var reps = currentReps();
     if (!reps.length) {

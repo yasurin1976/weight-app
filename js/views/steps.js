@@ -6,7 +6,13 @@
 
    【二重計上を防ぐルール】
    ここに入れるのは日常の歩行だけです。
-   トレッドミルや水中ウォーキングは有酸素として記録します。
+   水中ウォーキングなど（距離を記録しないもの）は有酸素として別に記録します。
+
+   トレッドミルだけは例外的にこの画面が自動で処理します。
+   iPhone/Apple Watchの歩数はトレッドミル歩行も数えてしまうため、
+   その日にトレッドミルの記録（距離入り）があれば、歩幅から歩数を逆算し、
+   入力された歩数から差し引いてから保存します。差し引いた内訳は画面に出します。
+   保存する「歩数」は差し引いた後の値、入力された生の値は rawSteps に残します。
    ============================================================ */
 
 var App = App || {};
@@ -31,13 +37,16 @@ App.Steps = (function () {
     if (App.showScreen) { App.showScreen('steps'); }
   }
 
-  /* その日の記録があれば読み込む */
+  /* その日の記録があれば読み込む。
+     編集のときは「入力した生の歩数」を欄に戻す（差し引く前の、iPhoneで見た数字）。
+     古い記録（rawStepsが無いもの）は steps をそのまま出す。 */
   function loadForDate(date) {
     var rec = S.getStepsByDate(date);
     editingId = rec ? rec.id : null;
 
     if ($('s-steps')) {
-      $('s-steps').value = (rec && typeof rec.steps === 'number') ? String(rec.steps) : '';
+      var shown = rec ? (typeof rec.rawSteps === 'number' ? rec.rawSteps : rec.steps) : null;
+      $('s-steps').value = (typeof shown === 'number') ? String(shown) : '';
     }
 
     var note = $('s-existing');
@@ -56,6 +65,28 @@ App.Steps = (function () {
     preview();
   }
 
+  /* ---------- トレッドミル分の差し引き ---------- */
+
+  /* 入力された生の歩数から、その日のトレッドミル歩数（推定）を引く。
+     0未満にはしない。 */
+  function effectiveSteps(rawN, date) {
+    var s = S.getSettings();
+    var tm = C.treadmillStepsForDate(date, s, { cardio: S.listCardio() });
+    var eff = Math.max(0, Math.round(rawN) - tm);
+    return { raw: Math.round(rawN), treadmill: tm, effective: eff };
+  }
+
+  function renderTreadmillNote(calc) {
+    var box = $('s-treadmill-note');
+    if (!box) { return; }
+    if (!calc || calc.treadmill <= 0) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = '<p class="scan-note-head">トレッドミル分を差し引きました</p>'
+      + '<p class="scan-note-sub">入力 ' + calc.raw.toLocaleString('ja-JP') + '歩　→　'
+      + 'トレッドミル分 −' + calc.treadmill.toLocaleString('ja-JP') + '歩　→　'
+      + '使用 ' + calc.effective.toLocaleString('ja-JP') + '歩</p>';
+  }
+
   /* ---------- 距離・消費の自動表示 ---------- */
 
   function preview() {
@@ -66,11 +97,16 @@ App.Steps = (function () {
     if (raw === '' || !isFinite(n) || n < 0) {
       setText('s-distance', '--');
       setText('s-kcal', '--');
+      renderTreadmillNote(null);
       return;
     }
 
+    var calc = effectiveSteps(n, date);
+    renderTreadmillNote(calc);
+    var eff = calc.effective;
+
     var s = S.getSettings();
-    var km = C.walkDistanceKm(n, s.strideCm);
+    var km = C.walkDistanceKm(eff, s.strideCm);
     setText('s-distance', km === null ? '--' : km.toFixed(2) + ' km');
 
     var weight = C.weightForDate(S.listBody(), date);
@@ -78,7 +114,7 @@ App.Steps = (function () {
       setText('s-kcal', '体重の記録が必要です');
       return;
     }
-    var kcal = C.walkingKcal({ steps: n, strideCm: s.strideCm, weightKg: weight });
+    var kcal = C.walkingKcal({ steps: eff, strideCm: s.strideCm, weightKg: weight });
     setText('s-kcal', kcal === null ? '--' : kcal + ' kcal');
   }
 
@@ -106,7 +142,12 @@ App.Steps = (function () {
       if (!isFinite(n)) { errors.push('歩数には数字を入力してください。'); }
       else if (!C.isInteger(n)) { errors.push('歩数は整数で入力してください。'); }
       else if (n < 0 || n > 100000) { errors.push('歩数は0〜100000の範囲で入力してください。'); }
-      else { out.steps = Math.round(n); }
+      else {
+        var calc = effectiveSteps(n, out.date || C.todayStr());
+        out.steps      = calc.effective;   /* 計算に使う値（差し引き後） */
+        out.rawSteps   = calc.raw;         /* 入力された生の値（編集時に戻す） */
+        out.treadmillSteps = calc.treadmill;
+      }
     }
 
     return { values: out, errors: errors };

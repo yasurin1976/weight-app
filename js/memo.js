@@ -9,6 +9,7 @@
      ＜マシンコーナー＞           ← ＜＞や【】で囲んだ行は見出しとして飛ばす
      ラットプルダウン             ← 種目名（数字で始まらない行）
      150LBS(68kg)                ← 重量。単位は LBS か kg。( )内は無視
+     左右24kg                    ← ダンベル。片手24kgとして記録し「左右24kg（計48kg）」と表示
      10+10+10回                  ← 回数。「＋」区切りでセットごと
                                  ← 空行で種目の区切り
      レッグプレス
@@ -28,8 +29,9 @@ var App = App || {};
 App.Memo = (function () {
   'use strict';
 
-  /* 「150LBS」「68kg」「150 lbs(68kg)」「150ポンド」 */
-  var RE_WEIGHT = /^(\d+(?:\.\d+)?)\s*(lbs?|ポンド|kg|キロ)\b/i;
+  /* 「150LBS」「68kg」「150 lbs(68kg)」「150ポンド」
+     ダンベル：「左右24kg」「片手24kg」「各24kg」「24kg×2」「24kg 左右」→ 片手24kg・左右あり */
+  var RE_WEIGHT = /^(?:(左右|片手|各|片側)\s*)?(\d+(?:\.\d+)?)\s*(lbs?|ポンド|kg|キロ)(?=$|[^a-z]|x\s*2)\s*(?:[（(][^)）]*[)）])?\s*(×\s*2|x\s*2|左右|片手|各|片側)?/i;
   /* 「10+10+10回」「15回」「10,10,8回」「10回×3」「12x3回」 */
   var RE_REPS   = /^(\d+(?:\s*[+＋,、\/]\s*\d+)*)\s*回?\s*(?:[×xX*]\s*(\d+)\s*(?:セット|set)?)?\s*$/;
   var RE_REPS_X = /^(\d+)\s*回\s*[×xX*]\s*(\d+)/;
@@ -45,9 +47,10 @@ App.Memo = (function () {
   function parseWeight(line) {
     var m = RE_WEIGHT.exec(line);
     if (!m) { return null; }
-    var w = Number(m[1]);
+    var w = Number(m[2]);
     if (!isFinite(w) || w < 0 || w > 1000) { return null; }
-    return { weight: Math.round(w * 2) / 2, unit: normalizeUnit(m[2]) };
+    var perHand = !!(m[1] || m[4]);
+    return { weight: Math.round(w * 2) / 2, unit: normalizeUnit(m[3]), perHand: perHand };
   }
 
   function parseReps(line) {
@@ -112,7 +115,7 @@ App.Memo = (function () {
 
     function flushPending() {
       if (pending) {
-        rows.push({ exercise: exercise, weight: pending.weight, unit: pending.unit, reps: null, line: pending.line });
+        rows.push({ exercise: exercise, weight: pending.weight, unit: pending.unit, perHand: pending.perHand, reps: null, line: pending.line });
         pending = null;
       }
     }
@@ -136,7 +139,7 @@ App.Memo = (function () {
       if (w) {
         flushPending();
         if (!exercise) { unknown.push(line); notes.push('種目名の前に重量が出てきました：' + line); continue; }
-        pending = { weight: w.weight, unit: w.unit, line: line };
+        pending = { weight: w.weight, unit: w.unit, perHand: w.perHand, line: line };
         continue;
       }
 
@@ -144,11 +147,11 @@ App.Memo = (function () {
       if (r) {
         if (!exercise) { unknown.push(line); continue; }
         if (pending) {
-          rows.push({ exercise: exercise, weight: pending.weight, unit: pending.unit, reps: r, line: pending.line + ' ' + line });
+          rows.push({ exercise: exercise, weight: pending.weight, unit: pending.unit, perHand: pending.perHand, reps: r, line: pending.line + ' ' + line });
           pending = null;
         } else {
           /* 重量なしの回数（自重種目） */
-          rows.push({ exercise: exercise, weight: null, unit: 'kg', reps: r, line: line });
+          rows.push({ exercise: exercise, weight: null, unit: 'kg', perHand: false, reps: r, line: line });
         }
         continue;
       }

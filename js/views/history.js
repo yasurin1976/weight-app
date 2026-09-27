@@ -95,8 +95,12 @@ App.History = (function () {
       rowText: function (e) {
         var s = S.getSettings();
         var km = C.walkDistanceKm(e.steps, s.strideCm);
-        return (typeof e.steps === 'number' ? e.steps.toLocaleString('ja-JP') : '-') + ' 歩'
-             + (km !== null ? '　' + km.toFixed(2) + 'km' : '');
+        var t = (typeof e.steps === 'number' ? e.steps.toLocaleString('ja-JP') : '-') + ' 歩'
+              + (km !== null ? '　' + km.toFixed(2) + 'km' : '');
+        if (e.treadmillSteps > 0) {
+          t += '　（入力 ' + e.rawSteps.toLocaleString('ja-JP') + '歩 − トレッドミル ' + e.treadmillSteps.toLocaleString('ja-JP') + '歩）';
+        }
+        return t;
       },
       lead:  function () { return '日常'; },
       badge: function () { return null; },
@@ -114,7 +118,7 @@ App.History = (function () {
       list:  function () { return S.listStrength(); },
       rowText: function (e) {
         var parts = [e.exercise];
-        if (typeof e.weight === 'number') { parts.push(App.Strength.weightLabel(e.weight, e.unit)); }
+        if (typeof e.weight === 'number') { parts.push(App.Strength.weightLabel(e.weight, e.unit, e.perHand)); }
         if (e.reps && e.reps.length) {
           parts.push(App.Strength.repsText(e.reps) + '回（計' + e.totalReps + '）');
         }
@@ -290,6 +294,17 @@ App.History = (function () {
         list.appendChild(ssum);
       }
     });
+
+    /* その日の運動の合計（許容量に加算している値そのもの） */
+    var addon = C.exerciseAddonForDate(date, S.getSettings(), {
+      body: S.listBody(), strength: S.listStrength(), cardio: S.listCardio()
+    });
+    if (addon && addon.total > 0) {
+      var ex = el('div', 'day-total');
+      ex.textContent = '今日の運動 合計 ' + addon.total.toLocaleString('ja-JP') + ' kcal'
+        + '（筋トレ ' + addon.strength + ' ＋ 有酸素 ' + addon.cardio + '）　→ 許容量に加算';
+      list.appendChild(ex);
+    }
 
     if (empty) { empty.hidden = any; }
   }

@@ -170,6 +170,31 @@ App.Calc = (function () {
     return round(bmr24 * beta, 0);
   }
 
+  /* 距離(km) → 歩数（歩幅から逆算。トレッドミル分を歩数から差し引くのに使う） */
+  function stepsFromDistanceKm(km, strideCm) {
+    if (!isNum(km) || !isNum(strideCm) || strideCm <= 0) { return null; }
+    return Math.round(km * 1000 / (strideCm / 100));
+  }
+
+  /* その日、トレッドミルで歩いた分の歩数（推定）。
+     iPhone/Apple Watchの歩数はトレッドミル歩行も数えてしまうため、
+     日常歩行の欄に入れる歩数から差し引いて二重計上を防ぐ。
+     対象はトレッドミルのみ（距離が入っている記録だけ）。
+     水中ウォーキングは端末が歩数を拾わないことが多いので対象外。 */
+  function treadmillStepsForDate(date, settings, data) {
+    var s = settings || {};
+    var list = (data || {}).cardio || [];
+    var sum = 0;
+    list.forEach(function (e) {
+      if (!e || e.date !== date) { return; }
+      if (e.exercise !== 'トレッドミル') { return; }
+      if (!isNum(e.distanceKm)) { return; }
+      var st = stepsFromDistanceKm(e.distanceKm, s.strideCm);
+      if (isNum(st)) { sum += st; }
+    });
+    return sum;
+  }
+
   /* ---------- 歩行 ---------- */
 
   /* 歩数 → 距離(km) */
@@ -1110,6 +1135,8 @@ App.Calc = (function () {
     dailyActivityKcal:  dailyActivityKcal,
     walkDistanceKm:     walkDistanceKm,
     walkingKcal:        walkingKcal,
+    stepsFromDistanceKm:   stepsFromDistanceKm,
+    treadmillStepsForDate: treadmillStepsForDate,
     strengthMinutesFromReps: strengthMinutesFromReps,
     strengthKcal:       strengthKcal,
     cardioKcal:         cardioKcal,

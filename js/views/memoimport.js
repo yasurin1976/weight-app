@@ -59,7 +59,7 @@ App.MemoImport = (function () {
     showError(null);
 
     rows = r.rows.map(function (x, i) {
-      return { id: i, exercise: x.exercise, weight: x.weight, unit: x.unit,
+      return { id: i, exercise: x.exercise, weight: x.weight, unit: x.unit, perHand: !!x.perHand,
                reps: x.reps ? x.reps.slice() : null,
                origReps: x.reps ? x.reps.join('+') : '',   /* 人が直したかの判定用 */
                line: x.line, removed: false };
@@ -92,9 +92,9 @@ App.MemoImport = (function () {
     box.hidden = false;
   }
 
-  function weightLabel(w, u) {
+  function weightLabel(w, u, perHand) {
     if (typeof w !== 'number') { return '自重'; }
-    return w + ' ' + u;
+    return perHand ? ('左右 ' + w + ' ' + u + '（計 ' + (w * 2) + ' ' + u + '）') : (w + ' ' + u);
   }
 
   function repsStr(reps) { return reps ? reps.join('+') : ''; }
@@ -112,7 +112,7 @@ App.MemoImport = (function () {
 
       var info = document.createElement('div');
       var ex = document.createElement('div'); ex.className = 'memo-ex'; ex.textContent = x.exercise;
-      var w  = document.createElement('div'); w.className = 'memo-w';  w.textContent = weightLabel(x.weight, x.unit);
+      var w  = document.createElement('div'); w.className = 'memo-w';  w.textContent = weightLabel(x.weight, x.unit, x.perHand);
       info.appendChild(ex); info.appendChild(w);
 
       var right = document.createElement('div');
@@ -213,7 +213,7 @@ App.MemoImport = (function () {
     var missing = live.filter(function (x) { return !x.reps || !x.reps.length; });
     if (missing.length) {
       showError(['回数が入っていない行があります：' + missing.map(function (x) {
-        return x.exercise + ' ' + weightLabel(x.weight, x.unit);
+        return x.exercise + ' ' + weightLabel(x.weight, x.unit, x.perHand);
       }).join('、') + '。回数を入れるか、×で外してください。']);
       return;
     }
@@ -227,6 +227,7 @@ App.MemoImport = (function () {
         exercise:  x.exercise,
         weight:    (typeof x.weight === 'number') ? x.weight : null,
         unit:      x.unit,
+        perHand:   (typeof x.weight === 'number') ? !!x.perHand : false,
         reps:      reps,
         setCount:  reps.length,
         totalReps: reps.reduce(function (a, b) { return a + b; }, 0),

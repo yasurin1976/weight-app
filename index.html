@@ -484,7 +484,10 @@
       <div class="field">
         <label for="s-steps">歩数 <span class="req">必須</span></label>
         <input type="number" id="s-steps" inputmode="numeric" step="1" min="0" max="100000">
+        <p class="field-help">iPhone/Apple Watchに出ている今日の合計歩数をそのまま入れてください。</p>
       </div>
+
+      <div class="card scan-note" id="s-treadmill-note" hidden></div>
 
       <div class="card">
         <div class="kv"><span class="kv-key">推定距離</span><span class="kv-val" id="s-distance">--</span></div>
@@ -492,7 +495,7 @@
       </div>
 
       <div class="banner banner-warn">
-        ジムのトレッドミルや水中ウォーキングの歩数は<strong>ここに含めないでください</strong>。有酸素として別に記録します（二重計上を防ぐため）。
+        トレッドミル分はこの画面が自動で差し引きます。水中ウォーキングなど<strong>それ以外の運動の歩数は含めないでください</strong>。有酸素として別に記録します（二重計上を防ぐため）。
       </div>
 
       <div id="steps-error" class="form-error" hidden></div>
@@ -560,6 +563,10 @@
           </div>
         </div>
       </div>
+      <label class="check-row">
+        <input type="checkbox" id="w-perhand">
+        <span>左右（片手ずつの重さ）。ダンベルなど。記録は片手の数字、表示は「左右24kg（計48kg）」</span>
+      </label>
 
       <!-- セット数と回数は別々の欄。
            セットごとに回数が違うときだけ、自由入力に切り替える。 -->

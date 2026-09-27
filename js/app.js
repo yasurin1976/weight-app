@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.12.2 (筋トレの推定消費を表示)';
+App.VERSION = '2.14.0 (歩数からトレッドミル分を自動で差し引く)';
 
 (function () {
   'use strict';
