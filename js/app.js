@@ -8,7 +8,7 @@
 
 var App = App || {};
 
-App.VERSION = '2.14.0 (歩数からトレッドミル分を自動で差し引く)';
+App.VERSION = '2.15.0 (デザインA トラック)';
 
 (function () {
   'use strict';

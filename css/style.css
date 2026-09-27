@@ -4,72 +4,127 @@
    iPhone縦画面・片手操作を最優先
    ============================================================ */
 
+/* ------------------------------------------------------------
+   デザインA「トラック」（2.15.0）
+   明るい地・オレンジのアクセント・黒の大きな数字。
+   色はすべてここのトークンから引く。画面ごとに直接色を書かない。
+   ------------------------------------------------------------ */
+@font-face{
+  font-family: "Barlow Condensed";
+  font-style: normal; font-weight: 600; font-display: swap;
+  src: url("fonts/barlow-condensed-latin-600-normal.woff2") format("woff2");
+}
+@font-face{
+  font-family: "Barlow Condensed";
+  font-style: normal; font-weight: 700; font-display: swap;
+  src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2");
+}
+
 :root{
-  --bg:          #f4f5f7;
+  --bg:          #eef0f3;
   --surface:     #ffffff;
-  --border:      #dfe2e8;
-  --text:        #1b1d21;
-  --text-sub:    #6b7280;
-  --accent:      #2f6fd0;
-  --accent-soft: #e8f0fc;
-  --warn-bg:     #fff4e0;
-  --warn-text:   #8a5300;
-  --error:       #c0392b;
-  --surface-2:   #e9eaee;
-  --good:        #17794f;
-  --good-bg:     #e2f2ea;
-  --bad:         #b3341f;
-  --bad-bg:      #fae7e3;
-  --series-1:    #2a78d6;
-  --series-2:    #eb6834;
+  --border:      #e2e5ea;
+  --card-line:   transparent;     /* 明るい地ではカードの枠線を消す */
+  --text:        #101216;
+  --text-sub:    #646b77;
+  --accent:      #ff5a1f;         /* 塗り（メーター・選択中のチップ） */
+  --accent-ink:  #c9410b;         /* 白地の上の文字に使うオレンジ */
+  --accent-fill: #e8500f;         /* 白文字を載せる塗り */
+  --accent-soft: #ffe9df;
+  --warn-bg:     #fff4e5;
+  --warn-text:   #9a4a00;
+  --error:       #c0223f;
+  --surface-2:   #e7e9ee;
+  --good:        #0e8a5c;
+  --good-bg:     #ddf4ea;
+  --bad:         #d1124f;
+  --bad-bg:      #fce4eb;
+  --series-1:    #7a828e;         /* 実測：灰（白地で3.9:1） */
+  --series-2:    #e8500f;         /* 7日平均：オレンジ（白地で3.8:1） */
+  --btn-bg:      #101216;
+  --btn-ink:     #ffffff;
+  --hero-bg:     #101216;
+  --hero-ink:    #ffffff;
+  --hero-sub:    #b7bcc6;
+  --hero-track:  #2a2e36;
+  --hero-line:   transparent;
+  --hero-bad:    #ff5c7a;
+  --hero-good:   #4fd99f;
+  --nav-bg:      #ffffff;
+  --num-font:    "Barlow Condensed", "Hiragino Sans", -apple-system, sans-serif;
   --nav-h:       64px;
   --header-h:    52px;
 }
 
-/* ダークの配色。
-   背景・カード・境界の段差をはっきりつけ、沈んで見えないようにしています。
-   グラフの2色（実測・7日平均）はこのカード色の上で検証済みです。 */
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:          #171a21;
-    --surface:     #212530;
-    --border:      #39404d;
-    --text:        #f5f7fa;
-    --text-sub:    #aab4c2;
-    --accent:      #6ea8ff;
-    --accent-soft: #24344a;
-    --warn-bg:     #3d2f14;
-    --warn-text:   #f5cd85;
-    --error:       #ff8f80;
-    --surface-2:   #2a2f3b;
-    --good:        #3fc48c;
-    --good-bg:     #17332c;
-    --bad:         #f4826d;
-    --bad-bg:      #3d211c;
-    --series-1:    #3987e5;
-    --series-2:    #d95926;
+    color-scheme: dark;
+    --bg:          #0e1013;
+    --surface:     #181b21;
+    --border:      #2a2f38;
+    --card-line:   #242832;
+    --text:        #f2f4f7;
+    --text-sub:    #9aa1ad;
+    --accent:      #ff6a2e;
+    --accent-ink:  #ff8a5c;
+    --accent-fill: #ff6a2e;
+    --accent-soft: #3a2217;
+    --warn-bg:     #3a2a12;
+    --warn-text:   #f5c27a;
+    --error:       #ff7a8e;
+    --surface-2:   #242832;
+    --good:        #34c98a;
+    --good-bg:     #14302a;
+    --bad:         #ff5c7a;
+    --bad-bg:      #3a1824;
+    --series-1:    #8c94a1;
+    --series-2:    #ff6a2e;
+    --btn-bg:      #f2f4f7;
+    --btn-ink:     #101216;
+    --hero-bg:     #1f2229;
+    --hero-ink:    #f2f4f7;
+    --hero-sub:    #9aa1ad;
+    --hero-track:  #2f343e;
+    --hero-line:   #ff6a2e55;
+    --hero-bad:    #ff5c7a;
+    --hero-good:   #34c98a;
+    --nav-bg:      #121418;
   }
 }
 
 /* 設定画面で「暗い」を選んだとき（OSの設定に関係なく暗くする） */
 :root[data-theme="dark"]{
-  --bg:          #171a21;
-  --surface:     #212530;
-  --border:      #39404d;
-  --text:        #f5f7fa;
-  --text-sub:    #aab4c2;
-  --accent:      #6ea8ff;
-  --accent-soft: #24344a;
-  --warn-bg:     #3d2f14;
-  --warn-text:   #f5cd85;
-  --error:       #ff8f80;
-  --surface-2:   #2a2f3b;
-  --good:        #3fc48c;
-  --good-bg:     #17332c;
-  --bad:         #f4826d;
-  --bad-bg:      #3d211c;
-  --series-1:    #3987e5;
-  --series-2:    #d95926;
+  color-scheme: dark;
+  --bg:          #0e1013;
+  --surface:     #181b21;
+  --border:      #2a2f38;
+  --card-line:   #242832;
+  --text:        #f2f4f7;
+  --text-sub:    #9aa1ad;
+  --accent:      #ff6a2e;
+  --accent-ink:  #ff8a5c;
+  --accent-fill: #ff6a2e;
+  --accent-soft: #3a2217;
+  --warn-bg:     #3a2a12;
+  --warn-text:   #f5c27a;
+  --error:       #ff7a8e;
+  --surface-2:   #242832;
+  --good:        #34c98a;
+  --good-bg:     #14302a;
+  --bad:         #ff5c7a;
+  --bad-bg:      #3a1824;
+  --series-1:    #8c94a1;
+  --series-2:    #ff6a2e;
+  --btn-bg:      #f2f4f7;
+  --btn-ink:     #101216;
+  --hero-bg:     #1f2229;
+  --hero-ink:    #f2f4f7;
+  --hero-sub:    #9aa1ad;
+  --hero-track:  #2f343e;
+  --hero-line:   #ff6a2e55;
+  --hero-bad:    #ff5c7a;
+  --hero-good:   #34c98a;
+  --nav-bg:      #121418;
 }
 
 *{ box-sizing: border-box; }
@@ -163,7 +218,7 @@ html,body{
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 12px;
   font-weight: 600;
   vertical-align: middle;
@@ -276,7 +331,7 @@ html,body{
   margin-top: 8px;
 }
 .btn-primary{
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent);
   color: #fff;
 }
@@ -290,7 +345,7 @@ html,body{
   margin-bottom: 12px;
 }
 .save-msg{
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 15px;
   font-weight: 600;
   margin: 10px 2px 0;
@@ -320,7 +375,7 @@ html,body{
 .nav-btn .nav-icon{ font-size: 19px; line-height:0; display:block; height:22px; }
 .nav-btn .nav-icon svg{ display:block; }
 .nav-btn .nav-label{ font-size: 11px; font-weight: 600; }
-.nav-btn.is-active{ color: var(--accent); }
+.nav-btn.is-active{ color: var(--accent-ink); }
 
 /* ============================================================
    Step 2 追記：記録メニュー・体組成入力・履歴一覧
@@ -363,7 +418,7 @@ html,body{
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 11px;
   font-weight: 700;
   vertical-align: middle;
@@ -419,7 +474,7 @@ html,body{
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 12px;
   font-weight: 700;
 }
@@ -430,7 +485,7 @@ html,body{
   background: none;
   border: none;
   border-top: 1px solid var(--border);
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 14px;
   font-weight: 600;
   padding: 11px 16px;
@@ -465,7 +520,7 @@ html,body{
   color: var(--text-sub);
 }
 .seg-btn.is-on{
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent);
   color: #fff;
 }
@@ -530,7 +585,7 @@ html,body{
   background:none;
   border:none;
   font-family: inherit;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 14px;
   font-weight: 600;
   /* 指で押しやすいよう、高さを44px以上確保する */
@@ -567,7 +622,7 @@ html,body{
   color: var(--text-sub);
 }
 .chip.is-on{
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: var(--accent);
   color: #fff;
 }
@@ -581,7 +636,7 @@ html,body{
 .past-title{
   font-size: 12px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   margin-bottom: 6px;
 }
 .past-row{
@@ -698,7 +753,7 @@ html,body{
   height: 100%;
   width: 0;
   border-radius: 99px;
-  background: var(--accent);
+  background: var(--accent-fill);
   transition: width .25s ease, background-color .25s ease;
 }
 /* 残りが少ない（8割以上食べた） */
@@ -716,7 +771,7 @@ html,body{
 
 /* ホームのクイック操作 */
 .quick-btn.primary{
-  background: var(--accent); border-color: var(--accent); color: #fff;
+  background: var(--accent-fill); border-color: var(--accent); color: #fff;
 }
 .quick-btn .ico{ display: block; font-size: 17px; margin-bottom: 2px; }
 
@@ -730,7 +785,7 @@ html,body{
   width: 44px; height: 44px;
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-ink);
   border-radius: 12px;
   font-size: 20px; font-weight: 700;
   font-family: inherit;
@@ -812,7 +867,7 @@ html,body{
 .sim-row b.bad{ color: var(--bad, #b3341f); }
 .sim-note{
   margin-top: 8px; font-size: 12.5px;
-  color: var(--accent); font-weight: 600;
+  color: var(--accent-ink); font-weight: 600;
 }
 
 .pick-item.is-on{
@@ -825,7 +880,7 @@ html,body{
 
 .btn-outline{
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--accent-ink);
   background: none;
 }
 
@@ -960,7 +1015,7 @@ input.is-ai{
 .chart-wait-count{
   font-size: 28px;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-ink);
   line-height: 1.1;
 }
 
@@ -1173,3 +1228,95 @@ input.is-ai{
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+
+/* ============================================================
+   デザインA「トラック」部品の上書き（2.15.0）
+   上の既存ルールは消さずに、ここで見た目だけ上書きしています。
+   戻したいときは、このブロックとトークン部分を旧版に戻せば元通り。
+   ============================================================ */
+
+/* ---------- 数字の書体 ---------- */
+.big-number, .kv-val, .sub-value, .stat-main, .goal-need-num,
+.zerolabels, .daynav-label, .sim-kcal, .sim-row b, .bk-count, .week .d,
+.field input[type="number"]{
+  font-family: var(--num-font);
+  letter-spacing: .01em;
+}
+.big-number{ font-size: 52px; font-weight: 700; line-height: 1.05; }
+.big-number.sm{ font-size: 36px; }
+.stat-main{ font-size: 30px; font-weight: 700; }
+.goal-need-num{ font-size: 38px; font-weight: 700; }
+.kv-val{ font-weight: 700; }
+
+/* ---------- 見出し・カード ---------- */
+.app-header{ background: var(--bg); border-bottom-color: transparent; }
+.app-header h1{ font-weight: 800; letter-spacing: .02em; }
+.card{ border-radius: 16px; border-color: var(--card-line); }
+.card-label{ font-size: 13px; font-weight: 600; }
+.card-hero{ border-color: var(--card-line); }
+.est-tag{ background: var(--accent-soft); color: var(--accent-ink); }
+
+/* ---------- ホームの「今日あと食べられる」：黒いカードに大きな数字 ---------- */
+#screen-home .card-hero{
+  background: var(--hero-bg);
+  color: var(--hero-ink);
+  border: 1px solid var(--hero-line);
+  padding: 18px 18px 16px;
+}
+#screen-home .card-hero .card-label,
+#screen-home .card-hero .unit,
+#screen-home .card-hero .meta-line{ color: var(--hero-sub); }
+#screen-home .card-hero .est-tag{ background: rgba(255,106,46,.2); color: #ff9a70; }
+#screen-home .card-hero .big-number{ font-size: 72px; line-height: 1; margin: 6px 0 2px; }
+#screen-home .card-hero .big-number.val-over,
+#screen-home .card-hero #home-remaining.val-over{ color: var(--hero-bad); }
+#screen-home .card-hero .meter{ background: var(--hero-track); height: 12px; }
+#screen-home .card-hero .addon{ background: rgba(79,217,159,.16); color: var(--hero-good); }
+
+/* 残りメーター：陸上トラックのレーンのような刻み */
+.meter span{
+  background: repeating-linear-gradient(90deg, var(--accent) 0 14px, #ff7a45 14px 16px);
+}
+.meter span.low{ background: var(--warn-text); }
+.meter span.over{ background: var(--bad); }
+
+/* ---------- ボタン ---------- */
+.btn{ border-radius: 999px; font-weight: 700; }
+.btn-primary{ background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+.btn-outline{ border-radius: 999px; }
+.quick-btn{ border-radius: 16px; border-color: var(--card-line); font-weight: 700; }
+.quick-btn.primary{ background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+.link-btn{ color: var(--accent-ink); }
+.save-msg{ color: var(--accent-ink); }
+
+/* ---------- 選択（区分・タブ・チップ） ---------- */
+.seg-btn{ border-color: var(--card-line); }
+.seg-btn.is-on{ background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); }
+.chip.is-on{ background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+
+/* ---------- 入力欄 ---------- */
+.field input, .field select, .field textarea{ border-radius: 12px; }
+.field input:focus, .field textarea:focus{ border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input.is-ai{ border-color: var(--accent); background: var(--accent-soft); }
+
+/* ---------- 記録メニュー：2列のタイル。スクショ読み取りをオレンジで目立たせる ---------- */
+#screen-addmenu .menu-list{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#screen-addmenu .menu-item{
+  min-height: 112px; justify-content: flex-end; border-radius: 16px;
+  border-color: var(--card-line); padding: 14px;
+}
+#screen-addmenu .menu-title{ font-size: 16px; font-weight: 800; }
+#screen-addmenu .menu-item.is-highlight{ background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+#screen-addmenu .menu-item.is-highlight .menu-desc{ color: rgba(255,255,255,.85); }
+
+/* ---------- 下部ナビ ---------- */
+.app-nav{ background: var(--nav-bg); }
+.nav-btn.is-active{ color: var(--accent-ink); }
+
+/* ---------- 日付ナビ・合計行 ---------- */
+.daynav-btn{ color: var(--accent-ink); }
+.day-total{ background: var(--accent-soft); color: var(--accent-ink); }
+.menu-item{ border-color: var(--card-line); border-radius: 16px; }
+.menu-item.is-highlight{ border-color: var(--accent); background: var(--accent-soft); }
+.sim{ border-left-color: var(--accent); }

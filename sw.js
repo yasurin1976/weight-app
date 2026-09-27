@@ -12,13 +12,15 @@
    古いキャッシュは自動で削除されます。
    ============================================================ */
 
-var CACHE_NAME = 'weight-app-v2.14.0';
+var CACHE_NAME = 'weight-app-v2.15.0';
 
 var ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
+  './css/fonts/barlow-condensed-latin-600-normal.woff2',
+  './css/fonts/barlow-condensed-latin-700-normal.woff2',
   './js/lib/chart.umd.js',
   './js/storage.js',
   './js/calc.js',
